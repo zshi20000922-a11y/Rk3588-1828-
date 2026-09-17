@@ -1,0 +1,4 @@
+phase,memory_used_mb,temperature_c,vision_rss_kb,mediamtx_rss_kb
+mjpeg_baseline,1041,,78220,0
+webrtc_single,1365.6,42.5,,
+webrtc_dual,1379.2,42.5,86660,34792

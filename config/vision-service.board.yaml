@@ -33,7 +33,7 @@ motion:
   direct_input: false
   width: 640
   height: 360
-  fps: 30
+  fps: 10
   pixel_threshold: 24
   min_region_pixels: 180
   active_ratio: 0.002
@@ -58,7 +58,7 @@ sources:
     height: 2160
     fps: 60
     buffers: 8
-    detect_fps: 15
+    detect_fps: 5
   - id: cam1
     type: v4l2
     uri: /dev/video62
@@ -67,7 +67,7 @@ sources:
     height: 2160
     fps: 60
     buffers: 8
-    detect_fps: 15
+    detect_fps: 5
 
 outputs:
   - id: mosaic
@@ -89,9 +89,9 @@ outputs:
     codec: h264
     width: 1280
     height: 720
-    fps: 25
-    bitrate: 4000000
-    gop: 25
+    fps: 60
+    bitrate: 8000000
+    gop: 60
     udp_enabled: false
     udp_host: 127.0.0.1
     udp_port: 5601
@@ -103,9 +103,9 @@ outputs:
     codec: h264
     width: 1280
     height: 720
-    fps: 25
-    bitrate: 4000000
-    gop: 25
+    fps: 60
+    bitrate: 8000000
+    gop: 60
     udp_enabled: false
     udp_host: 127.0.0.1
     udp_port: 5602

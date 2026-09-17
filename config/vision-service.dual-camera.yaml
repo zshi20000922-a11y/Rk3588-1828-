@@ -18,7 +18,7 @@ sources:
     height: 2160
     fps: 60
     buffers: 8
-    detect_fps: 15
+    detect_fps: 5
   - id: cam1
     type: v4l2
     uri: /dev/video62
@@ -27,9 +27,9 @@ sources:
     height: 2160
     fps: 60
     buffers: 8
-    detect_fps: 15
+    detect_fps: 5
 
 outputs:
   - {id: mosaic, kind: mosaic, codec: h264, width: 1920, height: 1080, fps: 25, bitrate: 8000000, gop: 25, udp_enabled: false, udp_host: 127.0.0.1, udp_port: 5600, rtsp_enabled: true, rtsp_path: /mosaic}
-  - {id: focus0, kind: focus, source: cam0, codec: h264, width: 1280, height: 720, fps: 25, bitrate: 4000000, gop: 25, udp_enabled: false, udp_host: 127.0.0.1, udp_port: 5601, rtsp_enabled: true, rtsp_path: /focus/0}
-  - {id: focus1, kind: focus, source: cam1, codec: h264, width: 1280, height: 720, fps: 25, bitrate: 4000000, gop: 25, udp_enabled: false, udp_host: 127.0.0.1, udp_port: 5602, rtsp_enabled: true, rtsp_path: /focus/1}
+  - {id: focus0, kind: focus, source: cam0, codec: h264, width: 1280, height: 720, fps: 60, bitrate: 8000000, gop: 60, udp_enabled: false, udp_host: 127.0.0.1, udp_port: 5601, rtsp_enabled: true, rtsp_path: /focus/0}
+  - {id: focus1, kind: focus, source: cam1, codec: h264, width: 1280, height: 720, fps: 60, bitrate: 8000000, gop: 60, udp_enabled: false, udp_host: 127.0.0.1, udp_port: 5602, rtsp_enabled: true, rtsp_path: /focus/1}

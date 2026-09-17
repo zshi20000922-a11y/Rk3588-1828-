@@ -1,0 +1,4 @@
+phase,vision_cpu_percent,gateway_cpu_percent,output_fps,webrtc_sessions,rga_dma_errors
+mjpeg_baseline,173,0,25,0,0
+webrtc_idle,109,0.1,60,0,0
+webrtc_dual,113,19.0,60,2,0

@@ -1,0 +1,3 @@
+{"phase":"dual_4k60_mjpeg_ready","vision_cpu_percent":173,"web_cpu_percent":27.8,"preview_clients":0,"note":"baseline before browser MJPEG clients"}
+{"phase":"dual_720p60_webrtc_idle","vision_cpu_percent":109,"mediamtx_cpu_percent":0.1,"detection_fps_per_camera":5}
+{"phase":"dual_720p60_webrtc_two_clients","vision_cpu_percent":113,"mediamtx_cpu_percent":19.0,"webrtc_sessions":2,"rga_dma_errors":0}

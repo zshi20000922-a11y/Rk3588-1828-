@@ -1,0 +1,11 @@
+#!/bin/sh
+DAEMON=/usr/bin/mediamtx
+CONFIG=/userdata/rk-edge-ai/config/mediamtx.board.yml
+PIDFILE=/run/mediamtx.pid
+LOG=/userdata/rk-edge-ai/mediamtx.log
+case "${1:-}" in
+  start) [ -x "$DAEMON" ] || exit 0; start-stop-daemon -S -b -m -p "$PIDFILE" -x "$DAEMON" -- "$CONFIG" >>"$LOG" 2>&1 ;;
+  stop) start-stop-daemon -K -p "$PIDFILE" -R 3 || true; rm -f "$PIDFILE" ;;
+  restart) "$0" stop; "$0" start ;;
+  *) echo "Usage: $0 {start|stop|restart}"; exit 1 ;;
+esac

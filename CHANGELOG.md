@@ -6,6 +6,7 @@
 - 板端摄像头注册表拆分为 `/focus/0`、`/focus/1`，并保留 `/mosaic` 拼接流。
 - 增加双 IMX415 配置模板和 media graph/STREAMON 验收记录；第二路硬件未连通时保持离线，避免拖垮第一路服务。
 - 确认 CSI1=`/dev/video62`、CSI3=`/dev/video44`，完成两路 4K NV12 输入及独立 RTSP 输出配置。
+- 摄像头页面由 8 FPS MJPEG 切换为 MediaMTX WebRTC 直通，两路输出提升为 720p60；YOLO 降至每路 5 FPS 独立采样，解决页面卡死并降低视觉服务 CPU。
 
 ## 0.1.0 - 2026-09-17
 
