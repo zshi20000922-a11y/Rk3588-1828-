@@ -1,0 +1,11 @@
+experiment_id: 20260917-slow-client-isolation
+date: 2026-09-17
+baseline_commit: 9d91aff
+device: RK3588
+camera: IMX415
+preview: shared MPP MJPEG 960x540 8 FPS
+duration_seconds: 30
+conditions:
+  - one normal client plus one client limited to 20 KB/s
+  - one normal client plus one connected client that never reads
+metrics: [fast_client_throughput, slow_client_throughput, gateway_processes, app_queue_drops, process_cpu_percent, rss_kb]

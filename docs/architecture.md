@@ -4,7 +4,9 @@
 
 每个 `conversation_id` 对应一个 Session。达到上限时按最后访问时间换出；删除会话时清空 KV。RK1828 没有公开可信占用率时只上报推理队列忙闲占空比与 RKNN3 内存，不伪造利用率。
 
-摄像头通过 Provider 解耦。图片/视频/RTSP 用于第一阶段测试；真机阶段复用 `rk_vision_service` 的 V4L2、DMA-BUF、RGA、MPP 和 RTSP 链路。浏览器预览通过 GStreamer `mppvideodec` 和 `mppjpegenc` 转为 MJPEG；同一 Camera ID 只创建一个生产管线，各 HTTP 客户端通过容量为一的队列订阅最新帧，因此慢客户端不会反压采集与编码。最后一个客户端离开两秒后释放 MPP 进程。Omni 只按需分析快照，不处理每帧。
+摄像头通过 Provider 解耦。图片/视频/RTSP 用于第一阶段测试；真机阶段复用 `rk_vision_service` 的 V4L2、DMA-BUF、RGA、MPP 和 RTSP 链路。浏览器预览通过 GStreamer `mppvideodec` 和 `mppjpegenc` 转为 MJPEG；同一 Camera ID 只创建一个生产管线，各 HTTP 客户端通过容量为一的队列订阅最新帧，避免应用层短时延迟直接阻塞采集与编码。最后一个客户端离开两秒后释放 MPP 进程。Omni 只按需分析快照，不处理每帧。
+
+需要注意，容量为一的队列限制的是应用层生产者到 HTTP 生成器之间的积压；已经交给 ASGI/TCP 的数据仍可能进入内核和客户端接收缓冲。真机 30 秒限速实验未影响正常客户端，但也未触发应用层丢帧，因此 MJPEG 不能视为具备端到端流控。超过少量局域网客户端时应使用 WebRTC，录像/高延迟观看则使用 HLS。
 
 RK3588 小模型通过插件注册，声明 `target_device` 和控制 Socket。第一版不与 RK1828 共享队列，但统一采集指标和请求 ID。
 

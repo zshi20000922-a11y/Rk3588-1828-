@@ -79,6 +79,7 @@ def platform_snapshot() -> dict[str, Any]:
     value["rk1828"]["utilization_percent"] = 100.0 if rk1828_requests else 0.0
     value["rk1828"]["phase"] = "inference" if rk1828_requests else "idle"
     value["rk1828"]["active_requests"] = len(rk1828_requests)
+    value["camera_preview"] = preview_gateway.status()
     return value
 
 

@@ -55,6 +55,8 @@ def test_shared_preview_status_is_observable():
         assert status.status_code == 200
         assert status.json()["shared"] is True
         assert status.json()["backend"] == "ffmpeg"
+        snapshot = client.get("/api/v1/system/snapshot", headers=TOKEN)
+        assert snapshot.json()["camera_preview"]["shared"] is True
 
 
 def test_vision_scalar_update_preserves_restricted_yaml_layout():
