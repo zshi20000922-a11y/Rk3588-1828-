@@ -19,4 +19,9 @@
 - `/dev/video53`、`/dev/video62`、`/dev/video71` 是 ISP mainpath 节点，但没有上游 sensor link，STREAMON 均返回 `Operation not permitted`。
 - 因此本次只安全启用摄像头 1 的 `/focus/0`；没有把 `/dev/video62` 伪装为在线摄像头 2，也没有部署会导致视觉服务整体启动失败的双摄配置。
 
-第二路恢复标准：`media-ctl -p` 能看到第二个 IMX415 到 DPHY/CIF/ISP 的 ENABLED 链路，并且目标 V4L2 节点可连续采集至少 30 帧。满足后部署双摄模板，再检查 `/focus/0`、`/focus/1` 和 `/mosaic` 三个 RTSP 地址。
+重新上电后确认物理接口命名与设备树映射如下：
+
+- CSI3：`3-001a -> media2 -> rkisp0-vir0 -> /dev/video44`。
+- CSI1：`7-001a -> media0 -> rkisp1-vir0 -> /dev/video62`。
+
+两颗传感器均识别为 IMX415（芯片 ID `0xE0`）。`/dev/video62` 以 3840×2160、NV12 连续采集 30 帧成功，因此已满足双路启用条件。此前把 CSI3 物理接口误对应到 DPHY3/I2C4，原因是混淆了板卡连接器编号与内核 DPHY 编号；后续必须以设备树 symbol、I2C 驱动绑定和 media graph 三者共同确认。
