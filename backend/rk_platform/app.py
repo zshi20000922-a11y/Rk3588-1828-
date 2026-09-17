@@ -22,6 +22,7 @@ from .experiments import ExperimentManager
 from .inference import create_backend
 from .monitor import SystemMonitor
 from .tools import ToolRegistry
+from .vision import VisionController
 
 
 class ConversationCreate(BaseModel):
@@ -48,6 +49,15 @@ class ExperimentCreate(BaseModel):
     variables: dict[str, Any] = Field(default_factory=dict)
 
 
+class VisionPipelinePatch(BaseModel):
+    detection_enabled: bool | None = None
+    motion_enabled: bool | None = None
+    motion_gate: bool | None = None
+    tracking_enabled: bool | None = None
+    active_detect_fps: int | None = None
+    idle_detect_fps: int | None = None
+
+
 config = load_config()
 db = Database(resolve_path(config, config["server"]["database"]))
 events = EventBus()
@@ -56,6 +66,7 @@ backend = create_backend(config)
 cameras = CameraRegistry(config.get("cameras", []))
 experiments = ExperimentManager(Path(config["_root"]), db, config)
 tools = ToolRegistry(db)
+vision = VisionController(config.get("vision_service"))
 active_requests: dict[str, str] = {}
 rk1828_requests: set[str] = set()
 
@@ -290,6 +301,31 @@ async def system_stream(websocket: WebSocket) -> None:
 @app.get("/api/v1/cameras", dependencies=[Depends(require_token)])
 async def list_cameras() -> list[dict[str, Any]]:
     return cameras.list()
+
+
+@app.get("/api/v1/vision/pipeline", dependencies=[Depends(require_token)])
+async def vision_pipeline() -> dict[str, Any]:
+    try:
+        return await asyncio.to_thread(vision.status)
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise HTTPException(503, f"vision service unavailable: {exc}")
+
+
+@app.patch("/api/v1/vision/pipeline", dependencies=[Depends(require_token)])
+async def update_vision_pipeline(body: VisionPipelinePatch) -> dict[str, Any]:
+    changes = body.model_dump(exclude_none=True)
+    if not changes:
+        raise HTTPException(422, "at least one vision setting is required")
+    try:
+        result = await asyncio.to_thread(vision.update, changes)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc))
+    except (OSError, RuntimeError) as exc:
+        raise HTTPException(503, f"vision service unavailable: {exc}")
+    db.execute("INSERT INTO audit_log(request_id,conversation_id,tool,arguments,outcome,created_at) VALUES (?,?,?,?,?,?)",
+               (str(uuid.uuid4()), None, "update_vision_pipeline", json.dumps(changes),
+                json.dumps({"ok": True}), now_iso()))
+    return result
 
 
 @app.get("/api/v1/cameras/{camera_id}/stream")

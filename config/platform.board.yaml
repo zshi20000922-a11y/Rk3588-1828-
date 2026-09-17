@@ -21,3 +21,7 @@ cameras:
   - {id: demo, name: Demo camera, provider: image, source: /userdata/rknn_Qwen2_5_Omni_demo/demo.jpg}
 plugins:
   - {id: rk3588-yolo, display_name: RK3588 YOLO detector, target_device: rk3588_npu, enabled: false, control_socket: /run/rk-vision-service/control.sock}
+vision_service:
+  enabled: true
+  control_socket: /run/rk-vision-service/control.sock
+  config_path: /userdata/rk-vision-service/config.yaml

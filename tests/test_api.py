@@ -5,6 +5,7 @@ os.environ.setdefault("RK_PLATFORM_CONFIG", str(Path(__file__).parents[1] / "con
 
 from fastapi.testclient import TestClient
 from rk_platform.app import app
+from rk_platform.vision import VisionController
 
 TOKEN = {"Authorization": "Bearer test-token"}
 
@@ -35,3 +36,19 @@ def test_tool_allowlist():
         status = client.post("/api/v1/tools/get_system_status/execute", headers=TOKEN, json={"arguments": {}}).json()
         assert status["ok"] is True
 
+
+def test_vision_control_disabled_by_default():
+    with TestClient(app) as client:
+        status = client.get("/api/v1/vision/pipeline", headers=TOKEN)
+        assert status.status_code == 200
+        assert status.json()["available"] is False
+        update = client.patch("/api/v1/vision/pipeline", headers=TOKEN,
+                              json={"detection_enabled": False})
+        assert update.status_code == 503
+
+
+def test_vision_scalar_update_preserves_restricted_yaml_layout():
+    source = "tracker:\n  enabled: true\nsources:\n  - id: cam0\n    detect_fps: 15\n"
+    changed = VisionController._replace_scalar(source, "tracker", "enabled", False)
+    changed = VisionController._replace_scalar(changed, "sources", "detect_fps", 10)
+    assert changed == "tracker:\n  enabled: false\nsources:\n  - id: cam0\n    detect_fps: 10\n"

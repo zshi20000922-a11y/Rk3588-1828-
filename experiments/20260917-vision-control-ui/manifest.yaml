@@ -1,0 +1,18 @@
+experiment_id: 20260917-vision-control-ui
+date: 2026-09-17
+baseline_commit: b5e8ecf
+target: RK3588 + RK1828
+camera: IMX415
+vision_service: rk_vision_service
+interface: /run/rk-vision-service/control.sock
+web_url: http://127.0.0.1:18081
+variables:
+  - motion_enabled
+  - motion_gate
+  - detection_enabled
+  - tracking_enabled
+acceptance:
+  - all switches round-trip through FastAPI and the Unix control socket
+  - disabling detection does not interrupt the H.264 RTSP stream
+  - camera can be enlarged without opening a duplicate stream
+  - failed soft reload rolls the configuration back
