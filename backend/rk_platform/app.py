@@ -176,8 +176,12 @@ async def _run_inference(conversation_id: str, request_id: str, body: MessageCre
                 metrics = event.get("metrics", {})
             await events.publish(conversation_id, event)
         db.add_message(str(uuid.uuid4()), conversation_id, request_id, "assistant", "".join(answer), metrics=metrics)
-        db.execute("UPDATE conversations SET token_count=token_count+?, reused_tokens=?, status='resident', updated_at=? WHERE id=?",
-                   (metrics.get("input_tokens", 0) + metrics.get("output_tokens", 0), metrics.get("reused_tokens", 0), now_iso(), conversation_id))
+        # RKNN reports reused history separately from newly prefetched input.
+        # Store the current resident context size instead of a lifetime sum.
+        current_tokens = (metrics.get("reused_tokens", 0) + metrics.get("input_tokens", 0)
+                          + metrics.get("output_tokens", 0))
+        db.execute("UPDATE conversations SET token_count=?, reused_tokens=?, status='resident', updated_at=? WHERE id=?",
+                   (current_tokens, metrics.get("reused_tokens", 0), now_iso(), conversation_id))
     except Exception as exc:
         await events.publish(conversation_id, {"type": "error", "request_id": request_id,
                                                "conversation_id": conversation_id, "error": str(exc), "timestamp": now_iso()})

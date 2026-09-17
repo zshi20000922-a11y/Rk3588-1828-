@@ -1,0 +1,22 @@
+name: motion-gated-detection
+date: 2026-09-17
+source: IMX415
+capture: 3840x2160@60
+motion:
+  algorithm: three_frame
+  resolution: 640x360
+  direct_input: false
+  gate_detection: true
+  idle_detect_fps: 1
+detection:
+  model: yolov5s-640.rknn
+  active_detect_fps: 15
+  contexts: 3
+vision_service_sha256: cc409524bbf19c87f2bd17a4ce2d78915e5895532327fd81aeb0d379759ec99c
+validation:
+  sample_seconds: 8
+  captured_frames: 481
+  completed_detections: 8
+  measured_idle_fps: 1.0
+  rtsp_preview: passed
+  rk1828_multiturn: passed

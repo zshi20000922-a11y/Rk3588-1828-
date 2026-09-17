@@ -41,3 +41,7 @@ RKNN Tokenizer 可能把一个中文字符的 UTF-8 字节拆到两个回调。�
 先查看 `web.log` 是否每秒重复请求 `/cameras/*/stream`。旧版页面把 `Date.now()` 放入摄像头 URL，WebSocket 指标每秒刷新 React 时会重新启动 FFmpeg，最终挤占 Web 服务并让未完成的推理任务被销毁。新版使用稳定的预览 URL；部署后浏览器必须强制刷新以丢弃旧 JavaScript。
 
 若 `daemon.log` 同时出现 `wait_event timed out` 或 KV checkpoint 超时，说明拥塞已经使 RK1828 Runtime 失去响应。清理预览进程后整板重启，等待日志出现 `rk_inference_daemon listening`，再进行问答。板卡重启会清除 ADB 转发，PC 端需重新执行 `adb forward tcp:18081 tcp:8080`。
+
+## 开启帧差门控后检测频率仍未降低
+
+当运动检测尺寸小于摄像头原始尺寸（当前为 640×360 对 3840×2160）时，必须设置 `motion.direct_input: false`，让 RGA 先缩放到运动检测缓冲区。默认的 `direct_input: true` 只适用于运动图与输入图同尺寸，否则运动任务会失败，YOLO 调度保持原始检测频率。可通过控制 Socket 的 `status` 比较数秒内 `detection_completed` 增量，并确认 `motion_pipeline_ms` 非空，不能仅凭 YAML 判断门控已生效。
