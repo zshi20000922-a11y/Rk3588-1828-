@@ -1,0 +1,11 @@
+event,value
+ttft_reduction_percent,47.27
+recall_accuracy_percent,100
+cross_talk_count,0
+clear_forget_success_percent,100
+repeat_run_elapsed_before_timeout_seconds,278
+kv_runtime_error,n_token_is_invalid_then_SaveKvcacheCheckpointAck_timeout
+post_fix_repeats,5
+post_fix_prime_samples,20
+post_fix_recall_samples,20
+post_fix_after_clear_samples,5

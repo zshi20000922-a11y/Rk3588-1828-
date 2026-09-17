@@ -1,0 +1,4 @@
+phase,samples,ttft_mean_ms,ttft_p50_ms,ttft_p95_ms,total_mean_ms,total_p50_ms,total_p95_ms,tpot_mean_ms,tpot_p50_ms,tpot_p95_ms,decode_tps_mean,reused_tokens_mean,correct,cross_talk
+prime,20,181.853,179.415,192.594,301.854,298.881,337.702,11.719,11.492,12.861,85.746,0,20,0
+recall,20,95.886,95.647,96.572,160.470,161.625,172.537,11.658,11.328,13.100,86.058,65.25,20,0
+after_clear,5,180.815,179.551,185.955,279.084,270.181,299.284,12.568,11.480,16.104,81.792,0,5,0
