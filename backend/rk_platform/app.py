@@ -128,7 +128,9 @@ app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173"], allo
 
 @app.get("/api/v1/health")
 async def health() -> dict[str, Any]:
-    return {"ok": True, "version": "0.1.0", "backend": config["inference"]["backend"]}
+    inference_ready = config["inference"]["backend"] != "rknn3" or Path(config["inference"]["socket_path"]).exists()
+    return {"ok": inference_ready, "web_ok": True, "inference_ready": inference_ready,
+            "version": "0.1.0", "backend": config["inference"]["backend"]}
 
 
 @app.post("/api/v1/conversations", dependencies=[Depends(require_token)])

@@ -28,6 +28,15 @@ RK1828 Context 仍被旧进程占用时，新进程加载模型会收到 `ACK_FA
 
 原因是平台服务启动早于 `rknn3_transfer_proxy` 子进程完全就绪。代理进程出现也不代表固件与 DDR 已准备完成；启动脚本现在同时等待 PCIe 设备节点和 `rknn3_transfer_proxy_b98e6c51`，再留出 10 秒稳定时间后初始化 RK1828 模型。已经卡住的旧进程需要终止后重新启动，不能继续复用半初始化 Context。
 
+### LRU 换出后 `n_token is invalid` / SaveKvcacheCheckpointAck 超时
+
+完全清理过的 Session 若仍留在池中，其 Token 数为零。旧版 LRU 会尝试保存它，RKNN3
+Runtime 报 `n_token = 0`，之后可能等待 RK1828 ACK 超时。新版在完全清理时立即销毁
+Session，并按用户 Session 数而不是包含 bootstrap 的总数执行容量判断。发生 ACK 超时后，
+只重启推理进程通常不足以恢复；应先停止推理服务，重新初始化 `S60rknn3`。如果日志停在
+`Weight sync chunk size resolved` 或启动报告 DDR 地址请求失败，需要对 RK1828 进行冷复位，
+再确认 `/api/v1/health` 的 `inference_ready=true`。
+
 ## 摄像头长回答出现 UTF-8 解码错误
 
 RKNN Tokenizer 可能把一个中文字符的 UTF-8 字节拆到两个回调。若每个回调直接封装成 JSON，Python 会在半个字符处报 `invalid continuation byte`。Daemon 现在缓存不完整字节序列，只发送可独立解码的 UTF-8 Token；这不是模型或摄像头故障。
