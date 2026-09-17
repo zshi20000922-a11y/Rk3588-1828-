@@ -1,0 +1,19 @@
+experiment_id: 20260917-detailed-vision-latency
+date: 2026-09-17
+device_path: RK3588 host -> PCIe Gen2 x1 -> RK1828
+model: Qwen2.5-Omni-3B
+quantization: GRQ W4A16 / KV FP16
+vision_model_input: 392x392 RGB888
+vision_embedding_shape: [196, 2048]
+vision_embedding_dtype: FP16
+vision_tokens: 196
+prompt: "<image>请用一句话描述图像中的主要内容。"
+prompt_tokens: 11
+total_input_tokens: 246
+input_resolutions: [640x360, 1280x720, 1920x1080]
+repeats_per_resolution: 5
+sampling: {top_k: 1, top_p: 0.9, temperature: 1.0}
+image_hashes:
+  640x360: 79e5373339548e5b186b97726a7424dc4532c22c2303bf82247af6b0fa7e9950
+  1280x720: 8e03958f204fe3ce5a3057e425be7f69fe84eef1290cf52b5470d3e500620741
+  1920x1080: 4b8859950b2ac078f351d0dce78de7d6c0170e583da0f5f091a7303616d28e49

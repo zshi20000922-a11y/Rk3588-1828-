@@ -10,4 +10,9 @@ phases: [prime, recall, clear, after_clear]
 metrics: [ttft_ms, total_ms, decode_tps, input_tokens, output_tokens, reused_tokens, correctness, cross_talk]
 status:
   functional_baseline: complete
-  repeated_p50_p95: blocked_pending_rk1828_cold_reset
+  repeated_p50_p95: complete_after_cold_reset
+repeats: 5
+samples:
+  prime: 20
+  recall: 20
+  after_clear: 5

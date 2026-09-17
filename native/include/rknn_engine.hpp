@@ -7,7 +7,11 @@
 namespace rkedge {
 struct GenerateMetrics {
   unsigned long long input_tokens{}, output_tokens{}, reused_tokens{};
-  double vision_ms{}, audio_ms{}, ttft_ms{}, llm_ms{}, total_ms{};
+  unsigned long long prompt_tokens{}, vision_tokens{}, embedding_tokens{}, embedding_calls{};
+  int image_width{}, image_height{}, model_image_width{}, model_image_height{};
+  double image_read_ms{}, image_preprocess_ms{}, vision_input_copy_ms{}, vision_input_sync_ms{};
+  double vision_encoder_ms{}, vision_output_sync_ms{}, vision_embedding_copy_ms{}, vision_ms{};
+  double multimodal_assembly_ms{}, text_embedding_ms{}, audio_ms{}, ttft_ms{}, llm_ms{}, total_ms{};
 };
 class RknnEngine {
  public:

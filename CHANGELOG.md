@@ -27,3 +27,6 @@
 - 完成 RK1828 四会话 KV 隔离基线：4/4 正确召回、0 串话，复用 65–66 Token，平均 TTFT 从 189.64 ms 降至 105.19 ms；完全清理后复用归零且事实被遗忘。
 - 重复采样发现零 Token Session 被 LRU 换出时触发 RKNN3 保存超时；修正用户 Session 容量边界、完全清理后销毁 Session、换出保存失败显式报错。硬件超时后的修复回归等待 RK1828 冷复位。
 - `/api/v1/health` 新增 `web_ok` 和 `inference_ready`，RKNN3 Socket 未就绪时不再将 Web 存活误报为整个平台健康。
+- 增加论文级多模态分阶段计时：图片读取、预处理、输入拷贝/同步、Vision Encoder、输出同步、视觉 Embedding 拷贝、模态组装、文本 Embedding、TTFT、Prefill TPS、TPOT 与 Decode TPS。
+- 修正 Decode TPS 口径为首 Token 后的 `(output_tokens-1)/decode_time`，并记录原始/模型输入分辨率、提示词 Token、视觉 Token 和总输入 Token。
+- 冷复位后完成修复版 KV 五轮回归：20/20 会话召回正确、零串话，TTFT P50/P95 从首轮 179.42/192.59 ms 降至 95.65/96.57 ms。
