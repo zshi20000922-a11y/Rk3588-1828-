@@ -155,7 +155,19 @@ async def delete_conversation(conversation_id: str) -> dict[str, bool]:
 
 @app.get("/api/v1/conversations/{conversation_id}/messages", dependencies=[Depends(require_token)])
 async def list_messages(conversation_id: str) -> list[dict[str, Any]]:
-    return db.rows("SELECT * FROM messages WHERE conversation_id=? ORDER BY created_at", (conversation_id,))
+    rows = db.rows("SELECT * FROM messages WHERE conversation_id=? ORDER BY created_at", (conversation_id,))
+    for row in rows:
+        try:
+            attachments = json.loads(row.get("attachments") or "[]")
+        except json.JSONDecodeError:
+            attachments = []
+        row["attachments"] = attachments
+        row["attachment_urls"] = [
+            f"/api/v1/camera-snapshots/{Path(item['path']).name}"
+            for item in attachments
+            if item.get("path") and Path(item["path"]).suffix.lower() in {".jpg", ".jpeg", ".png", ".webp"}
+        ]
+    return rows
 
 
 async def _run_inference(conversation_id: str, request_id: str, body: MessageCreate) -> None:
@@ -363,7 +375,26 @@ async def analyze_camera(camera_id: str, conversation_id: str) -> dict[str, str]
         path = cameras.capture(camera_id, resolve_path(config, config["server"]["upload_dir"]) / "camera")
     except KeyError:
         raise HTTPException(404, "camera not found")
-    return await create_message(conversation_id, MessageCreate(text="<image>请分析当前摄像头画面。", attachments=[str(path)]))
+    result = await create_message(conversation_id, MessageCreate(
+        text=f"<image>请分析摄像头 {camera_id} 的当前画面。",
+        attachments=[str(path)],
+    ))
+    result["snapshot_url"] = f"/api/v1/camera-snapshots/{path.name}"
+    result["camera_id"] = camera_id
+    return result
+
+
+@app.get("/api/v1/camera-snapshots/{filename}")
+async def camera_snapshot(filename: str, token: str) -> FileResponse:
+    if token != config["server"]["admin_token"]:
+        raise HTTPException(401, "invalid admin token")
+    safe_name = Path(filename).name
+    if safe_name != filename or Path(safe_name).suffix.lower() not in {".jpg", ".jpeg", ".png", ".webp"}:
+        raise HTTPException(404, "snapshot not found")
+    target = resolve_path(config, config["server"]["upload_dir"]) / "camera" / safe_name
+    if not target.is_file():
+        raise HTTPException(404, "snapshot not found")
+    return FileResponse(target, headers={"Cache-Control": "private, max-age=31536000, immutable"})
 
 
 @app.get("/api/v1/tools", dependencies=[Depends(require_token)])

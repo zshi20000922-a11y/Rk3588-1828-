@@ -25,7 +25,12 @@ type Conversation = {
   reused_tokens: number;
   updated_at: string;
 };
-type Message = { id?: string; role: string; content: string };
+type Message = {
+  id?: string;
+  role: string;
+  content: string;
+  attachment_urls?: string[];
+};
 type PreviewStream = {
   clients: number;
   running: boolean;
@@ -229,10 +234,20 @@ function App() {
     setRecording(true);
   };
   const analyze = async (id: string) => {
-    if (current)
-      await request(`/cameras/${id}/analyze?conversation_id=${current}`, {
-        method: "POST",
-      });
+    if (!current) return;
+    const camera = cameras.find((item) => item.id === id);
+    const result = await request(
+      `/cameras/${id}/analyze?conversation_id=${current}`,
+      { method: "POST" },
+    );
+    setMessages((old) => [
+      ...old,
+      {
+        role: "user",
+        content: `分析当前帧 · ${camera?.name || id}`,
+        attachment_urls: [result.snapshot_url],
+      },
+    ]);
   };
   const updateVision = async (field: keyof VisionPipeline, value: boolean) => {
     setVisionBusy(String(field));
@@ -359,7 +374,15 @@ function App() {
             )}
             {messages.map((m, i) => (
               <div key={m.id || i} className={"bubble " + m.role}>
-                {m.content}
+              {m.attachment_urls?.map((url) => (
+                <img
+                  className="message-image"
+                  key={url}
+                  src={`${url}?token=${encodeURIComponent(token)}`}
+                  alt="提交给模型分析的摄像头帧"
+                />
+              ))}
+              {m.content}
               </div>
             ))}
           </div>

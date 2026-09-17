@@ -396,6 +396,15 @@ header p {
   border: 1px solid #23363c;
   border-bottom-left-radius: 3px;
 }
+.message-image {
+  display: block;
+  width: min(100%, 560px);
+  max-height: 360px;
+  object-fit: contain;
+  margin-bottom: 10px;
+  border-radius: 10px;
+  background: #05090b;
+}
 .composer {
   margin: 0 5% 24px;
   border: 1px solid #2c4146;

@@ -90,6 +90,18 @@ def test_jpeg_stream_parser_handles_noise_and_partial_frames():
     assert buffer == bytearray(b"g")
 
 
+def test_camera_snapshot_requires_token_and_serves_only_camera_images():
+    snapshot = Path("/tmp/rk-edge-ai-test/uploads/camera/test-frame.jpg")
+    snapshot.parent.mkdir(parents=True, exist_ok=True)
+    snapshot.write_bytes(b"\xff\xd8test\xff\xd9")
+    with TestClient(app) as client:
+        assert client.get("/api/v1/camera-snapshots/test-frame.jpg").status_code == 422
+        response = client.get("/api/v1/camera-snapshots/test-frame.jpg?token=test-token")
+        assert response.status_code == 200
+        assert response.content == b"\xff\xd8test\xff\xd9"
+        assert client.get("/api/v1/camera-snapshots/test-frame.txt?token=test-token").status_code == 404
+
+
 def test_rtsp_status_checks_the_path_instead_of_only_the_port():
     class Handler(socketserver.BaseRequestHandler):
         def handle(self):
