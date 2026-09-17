@@ -5,6 +5,7 @@ os.environ.setdefault("RK_PLATFORM_CONFIG", str(Path(__file__).parents[1] / "con
 
 from fastapi.testclient import TestClient
 from rk_platform.app import app
+from rk_platform.cameras import build_preview_command
 from rk_platform.vision import VisionController
 
 TOKEN = {"Authorization": "Bearer test-token"}
@@ -52,3 +53,16 @@ def test_vision_scalar_update_preserves_restricted_yaml_layout():
     changed = VisionController._replace_scalar(source, "tracker", "enabled", False)
     changed = VisionController._replace_scalar(changed, "sources", "detect_fps", 10)
     assert changed == "tracker:\n  enabled: false\nsources:\n  - id: cam0\n    detect_fps: 10\n"
+
+
+def test_preview_commands_are_explicit_and_hardware_backend_uses_mpp():
+    source = "rtsp://127.0.0.1:8554/mosaic"
+    software = build_preview_command(source, {"backend": "ffmpeg", "width": 640, "height": 360, "fps": 5})
+    hardware = build_preview_command(source, {"backend": "gstreamer_mpp", "width": 960, "height": 540,
+                                                       "fps": 8, "quality": 70, "latency_ms": 50})
+    assert software[0] == "ffmpeg"
+    assert "fps=5,scale=640:360" in software
+    assert hardware[0] == "gst-launch-1.0"
+    assert "mppvideodec" in hardware
+    assert "mppjpegenc" in hardware
+    assert "video/x-raw,framerate=8/1" in hardware

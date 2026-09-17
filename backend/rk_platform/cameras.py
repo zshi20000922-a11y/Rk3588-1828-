@@ -10,6 +10,32 @@ from typing import Any
 from urllib.parse import urlparse
 
 
+def build_preview_command(source: str, settings: dict[str, Any] | None = None) -> list[str]:
+    settings = settings or {}
+    backend = settings.get("backend", "ffmpeg")
+    width = int(settings.get("width", 960))
+    height = int(settings.get("height", 540))
+    fps = int(settings.get("fps", 8))
+    quality = int(settings.get("quality", 70))
+    if backend == "gstreamer_mpp":
+        return [
+            "gst-launch-1.0", "-q", "rtspsrc", f"location={source}",
+            f"latency={int(settings.get('latency_ms', 50))}", "protocols=tcp", "!",
+            "rtph264depay", "!", "h264parse", "!", "mppvideodec",
+            f"width={width}", f"height={height}", "!", "videorate", "!",
+            f"video/x-raw,framerate={fps}/1", "!", "mppjpegenc", f"q-factor={quality}", "!",
+            "fdsink", "fd=1", "sync=false",
+        ]
+    if backend != "ffmpeg":
+        raise ValueError(f"unsupported camera preview backend: {backend}")
+    ffmpeg_quality = max(2, min(31, round((100 - quality) * 0.29 + 2)))
+    return [
+        "ffmpeg", "-loglevel", "error", "-rtsp_transport", "tcp", "-i", source,
+        "-vf", f"fps={fps},scale={width}:{height}", "-q:v", str(ffmpeg_quality),
+        "-f", "image2pipe", "-vcodec", "mjpeg", "-",
+    ]
+
+
 class CameraProvider(ABC):
     def __init__(self, camera_id: str, name: str, source: str):
         self.id, self.name, self.source = camera_id, name, source

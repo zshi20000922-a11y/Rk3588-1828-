@@ -31,6 +31,12 @@ cameras:
     name: Demo camera
     provider: image
     source: /userdata/rknn_Qwen2_5_Omni_demo/demo.jpg
+camera_preview:
+  backend: ffmpeg
+  width: 960
+  height: 540
+  fps: 8
+  quality: 70
 plugins:
   - id: rk3588-yolo
     display_name: RK3588 YOLO detector

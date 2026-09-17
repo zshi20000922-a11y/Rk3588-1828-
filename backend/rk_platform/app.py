@@ -8,13 +8,13 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
-from fastapi import Depends, FastAPI, File, Header, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, File, Header, HTTPException, Request, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from .cameras import CameraRegistry, RtspCamera
+from .cameras import CameraRegistry, RtspCamera, build_preview_command
 from .config import load_config, resolve_path
 from .database import Database, now_iso
 from .events import EventBus
@@ -64,6 +64,7 @@ events = EventBus()
 monitor = SystemMonitor()
 backend = create_backend(config)
 cameras = CameraRegistry(config.get("cameras", []))
+camera_preview = config.get("camera_preview", {})
 experiments = ExperimentManager(Path(config["_root"]), db, config)
 tools = ToolRegistry(db)
 vision = VisionController(config.get("vision_service"))
@@ -329,7 +330,7 @@ async def update_vision_pipeline(body: VisionPipelinePatch) -> dict[str, Any]:
 
 
 @app.get("/api/v1/cameras/{camera_id}/stream")
-async def camera_stream(camera_id: str, token: str):
+async def camera_stream(camera_id: str, token: str, request: Request):
     if token != config["server"]["admin_token"]:
         raise HTTPException(401, "invalid admin token")
     try:
@@ -339,12 +340,17 @@ async def camera_stream(camera_id: str, token: str):
     if isinstance(provider, RtspCamera):
         async def mjpeg():
             process = await asyncio.create_subprocess_exec(
-                "ffmpeg", "-loglevel", "error", "-rtsp_transport", "tcp", "-i", provider.source,
-                "-vf", "fps=8,scale=960:-2", "-q:v", "5", "-f", "image2pipe", "-vcodec", "mjpeg", "-",
+                *build_preview_command(provider.source, camera_preview),
                 stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL)
             buffer = bytearray()
             try:
-                while chunk := await process.stdout.read(65536):
+                while not await request.is_disconnected():
+                    try:
+                        chunk = await asyncio.wait_for(process.stdout.read(65536), timeout=0.5)
+                    except asyncio.TimeoutError:
+                        continue
+                    if not chunk:
+                        break
                     buffer.extend(chunk)
                     while True:
                         start, end = buffer.find(b"\xff\xd8"), buffer.find(b"\xff\xd9")
@@ -353,8 +359,13 @@ async def camera_stream(camera_id: str, token: str):
                         frame = bytes(buffer[start:end + 2]); del buffer[:end + 2]
                         yield b"--frame\r\nContent-Type: image/jpeg\r\nContent-Length: " + str(len(frame)).encode() + b"\r\n\r\n" + frame + b"\r\n"
             finally:
-                process.terminate()
-                await process.wait()
+                if process.returncode is None:
+                    process.terminate()
+                    try:
+                        await asyncio.wait_for(process.wait(), timeout=2)
+                    except asyncio.TimeoutError:
+                        process.kill()
+                        await process.wait()
         return StreamingResponse(mjpeg(), media_type="multipart/x-mixed-replace; boundary=frame")
     path = cameras.capture(camera_id, resolve_path(config, config["server"]["upload_dir"]) / "camera")
     return FileResponse(path)

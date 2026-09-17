@@ -7,6 +7,7 @@
 - FastAPI REST/SSE/WebSocket API、SQLite 会话与审计；
 - React 操作端：文字、文件、按住说话、流式输出、设备/模型/KV 面板；
 - 真实视觉链路可在页面独立启停帧差、运动门控、YOLO 与追踪；摄像头支持双击放大和浏览器全屏；
+- RK3588 浏览器视频网关使用 MPP 硬解码与硬件 JPEG 编码，避免软件预览占满 CPU 核；
 - CameraProvider（图片、视频、RTSP）和当前帧分析；
 - 白名单工具注册表，不允许任意 Shell；
 - 可复现实验目录生成器；
