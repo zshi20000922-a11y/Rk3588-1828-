@@ -6,6 +6,7 @@ os.environ.setdefault("RK_PLATFORM_CONFIG", str(Path(__file__).parents[1] / "con
 from fastapi.testclient import TestClient
 from rk_platform.app import app
 from rk_platform.cameras import build_preview_command
+from rk_platform.preview import extract_jpeg_frames
 from rk_platform.vision import VisionController
 
 TOKEN = {"Authorization": "Bearer test-token"}
@@ -48,6 +49,14 @@ def test_vision_control_disabled_by_default():
         assert update.status_code == 503
 
 
+def test_shared_preview_status_is_observable():
+    with TestClient(app) as client:
+        status = client.get("/api/v1/cameras/preview/status", headers=TOKEN)
+        assert status.status_code == 200
+        assert status.json()["shared"] is True
+        assert status.json()["backend"] == "ffmpeg"
+
+
 def test_vision_scalar_update_preserves_restricted_yaml_layout():
     source = "tracker:\n  enabled: true\nsources:\n  - id: cam0\n    detect_fps: 15\n"
     changed = VisionController._replace_scalar(source, "tracker", "enabled", False)
@@ -66,3 +75,12 @@ def test_preview_commands_are_explicit_and_hardware_backend_uses_mpp():
     assert "mppvideodec" in hardware
     assert "mppjpegenc" in hardware
     assert "video/x-raw,framerate=8/1" in hardware
+
+
+def test_jpeg_stream_parser_handles_noise_and_partial_frames():
+    buffer = bytearray(b"noise\xff\xd8first\xff\xd9\xff\xd8partial")
+    assert extract_jpeg_frames(buffer) == [b"\xff\xd8first\xff\xd9"]
+    assert buffer == bytearray(b"\xff\xd8partial")
+    buffer.extend(b"-rest\xff\xd9trailing")
+    assert extract_jpeg_frames(buffer) == [b"\xff\xd8partial-rest\xff\xd9"]
+    assert buffer == bytearray(b"g")

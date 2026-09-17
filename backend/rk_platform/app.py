@@ -14,13 +14,14 @@ from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from .cameras import CameraRegistry, RtspCamera, build_preview_command
+from .cameras import CameraRegistry, RtspCamera
 from .config import load_config, resolve_path
 from .database import Database, now_iso
 from .events import EventBus
 from .experiments import ExperimentManager
 from .inference import create_backend
 from .monitor import SystemMonitor
+from .preview import SharedMjpegGateway
 from .tools import ToolRegistry
 from .vision import VisionController
 
@@ -65,6 +66,7 @@ monitor = SystemMonitor()
 backend = create_backend(config)
 cameras = CameraRegistry(config.get("cameras", []))
 camera_preview = config.get("camera_preview", {})
+preview_gateway = SharedMjpegGateway(camera_preview)
 experiments = ExperimentManager(Path(config["_root"]), db, config)
 tools = ToolRegistry(db)
 vision = VisionController(config.get("vision_service"))
@@ -113,7 +115,10 @@ tools.register("clear_conversation", _clear_tool, confirmation=True)
 async def lifespan(_: FastAPI):
     resolve_path(config, config["server"]["upload_dir"]).mkdir(parents=True, exist_ok=True)
     resolve_path(config, config["server"]["kv_dir"]).mkdir(parents=True, exist_ok=True)
-    yield
+    try:
+        yield
+    finally:
+        await preview_gateway.close()
 
 
 app = FastAPI(title="RK Heterogeneous Edge AI Platform", version="0.1.0", lifespan=lifespan)
@@ -304,6 +309,11 @@ async def list_cameras() -> list[dict[str, Any]]:
     return cameras.list()
 
 
+@app.get("/api/v1/cameras/preview/status", dependencies=[Depends(require_token)])
+async def camera_preview_status() -> dict[str, Any]:
+    return preview_gateway.status()
+
+
 @app.get("/api/v1/vision/pipeline", dependencies=[Depends(require_token)])
 async def vision_pipeline() -> dict[str, Any]:
     try:
@@ -338,35 +348,8 @@ async def camera_stream(camera_id: str, token: str, request: Request):
     except KeyError:
         raise HTTPException(404, "camera not found")
     if isinstance(provider, RtspCamera):
-        async def mjpeg():
-            process = await asyncio.create_subprocess_exec(
-                *build_preview_command(provider.source, camera_preview),
-                stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL)
-            buffer = bytearray()
-            try:
-                while not await request.is_disconnected():
-                    try:
-                        chunk = await asyncio.wait_for(process.stdout.read(65536), timeout=0.5)
-                    except asyncio.TimeoutError:
-                        continue
-                    if not chunk:
-                        break
-                    buffer.extend(chunk)
-                    while True:
-                        start, end = buffer.find(b"\xff\xd8"), buffer.find(b"\xff\xd9")
-                        if start < 0 or end < start:
-                            break
-                        frame = bytes(buffer[start:end + 2]); del buffer[:end + 2]
-                        yield b"--frame\r\nContent-Type: image/jpeg\r\nContent-Length: " + str(len(frame)).encode() + b"\r\n\r\n" + frame + b"\r\n"
-            finally:
-                if process.returncode is None:
-                    process.terminate()
-                    try:
-                        await asyncio.wait_for(process.wait(), timeout=2)
-                    except asyncio.TimeoutError:
-                        process.kill()
-                        await process.wait()
-        return StreamingResponse(mjpeg(), media_type="multipart/x-mixed-replace; boundary=frame")
+        return StreamingResponse(preview_gateway.stream(camera_id, provider.source, request),
+                                 media_type="multipart/x-mixed-replace; boundary=frame")
     path = cameras.capture(camera_id, resolve_path(config, config["server"]["upload_dir"]) / "camera")
     return FileResponse(path)
 

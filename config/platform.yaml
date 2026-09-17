@@ -37,6 +37,7 @@ camera_preview:
   height: 540
   fps: 8
   quality: 70
+  idle_seconds: 2
 plugins:
   - id: rk3588-yolo
     display_name: RK3588 YOLO detector

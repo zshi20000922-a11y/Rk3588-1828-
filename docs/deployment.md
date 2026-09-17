@@ -25,6 +25,8 @@ python3 -m venv .venv
 `mppvideodec` 硬解码/缩放，再由 `mppjpegenc` 输出浏览器可显示的 MJPEG。
 部署前可用 `gst-inspect-1.0 mppvideodec mppjpegenc` 检查插件。开发机没有
 Rockchip MPP 时保持 `ffmpeg` 后端。每个浏览器预览连接当前对应一个网关进程，
-客户端离开后服务会主动终止该进程；多客户端共享网关列入后续优化。
+客户端离开后服务会主动终止该进程。同一摄像头的所有页面共享一个 MPP
+进程，可通过 `GET /api/v1/cameras/preview/status` 查看客户端数、进程 PID、
+累计帧数、慢客户端丢帧和异常重启次数。
 
 网口接入后先执行 `udhcpc -i eth0 -q -n`。如果没有 DHCP OFFER，不应猜测局域网网段；先在路由器配置 DHCP，或由管理员提供固定 IPv4、掩码和网关。USB 调试期间仍可使用 `adb forward tcp:18081 tcp:8080`。

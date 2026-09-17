@@ -26,6 +26,7 @@ camera_preview:
   fps: 8
   quality: 70
   latency_ms: 50
+  idle_seconds: 2
 plugins:
   - {id: rk3588-yolo, display_name: RK3588 YOLO detector, target_device: rk3588_npu, enabled: false, control_socket: /run/rk-vision-service/control.sock}
 vision_service:
