@@ -1,0 +1,40 @@
+#!/bin/sh
+ROOT=/userdata/rk-edge-ai
+MODEL=/userdata/rknn_Qwen2_5_Omni_demo
+DAEMON_PID=$ROOT/data/inference.pid
+WEB_PID=$ROOT/data/web.pid
+
+start() {
+  mkdir -p /run/rk-edge-ai "$ROOT/data/kv" "$ROOT/data/uploads"
+  if [ ! -s "$DAEMON_PID" ] || ! kill -0 "$(cat "$DAEMON_PID")" 2>/dev/null; then
+    cd "$MODEL" || exit 1
+    LD_LIBRARY_PATH="$MODEL/lib:${LD_LIBRARY_PATH:-}" RKEDGE_MODEL_ROOT="$MODEL/model" RKEDGE_KV_DIR="$ROOT/data/kv" \
+      "$ROOT/bin/rk_inference_daemon" /run/rk-edge-ai/inference.sock "$ROOT/data/kv" \
+      >>"$ROOT/daemon.log" 2>&1 & echo $! >"$DAEMON_PID"
+  fi
+  if [ ! -s "$WEB_PID" ] || ! kill -0 "$(cat "$WEB_PID")" 2>/dev/null; then
+    cd "$ROOT" || exit 1
+    RK_PLATFORM_CONFIG="$ROOT/config/platform.board.yaml" PYTHONPATH="$ROOT/backend" \
+      "$ROOT/.venv/bin/python" -m uvicorn rk_platform.app:app --host 0.0.0.0 --port 8080 \
+      >>"$ROOT/web.log" 2>&1 & echo $! >"$WEB_PID"
+  fi
+}
+
+stop_one() {
+  file=$1
+  [ -s "$file" ] || return 0
+  pid=$(cat "$file")
+  kill "$pid" 2>/dev/null || true
+  n=0
+  while kill -0 "$pid" 2>/dev/null && [ "$n" -lt 10 ]; do sleep 1; n=$((n+1)); done
+  kill -9 "$pid" 2>/dev/null || true
+  rm -f "$file"
+}
+
+case "${1:-start}" in
+  start) start ;;
+  stop) stop_one "$WEB_PID"; stop_one "$DAEMON_PID" ;;
+  restart) "$0" stop; start ;;
+  status) ps -p "$(cat "$DAEMON_PID" 2>/dev/null)" -o pid,etime,rss,cmd 2>/dev/null; ps -p "$(cat "$WEB_PID" 2>/dev/null)" -o pid,etime,rss,cmd 2>/dev/null ;;
+  *) echo "Usage: $0 {start|stop|restart|status}"; exit 2 ;;
+esac

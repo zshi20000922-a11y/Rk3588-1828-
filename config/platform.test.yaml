@@ -1,0 +1,13 @@
+server:
+  host: 127.0.0.1
+  port: 8080
+  admin_token: test-token
+  database: /tmp/rk-edge-ai-test.db
+  upload_dir: /tmp/rk-edge-ai-test/uploads
+  kv_dir: /tmp/rk-edge-ai-test/kv
+inference: {backend: mock, socket_path: /tmp/rk-edge-ai-test.sock, max_sessions: 4, idle_swap_seconds: 900, max_context_tokens: 1024, max_new_tokens: 64}
+models:
+  active: qwen2.5-omni-3b-rk1828
+  registry: [{id: qwen2.5-omni-3b-rk1828, display_name: Qwen2.5-Omni-3B, target_device: rk1828, quantization: KV FP16, core_mask: '0xff', max_context_tokens: 1024, modalities: [text,image,audio]}]
+cameras: []
+plugins: []

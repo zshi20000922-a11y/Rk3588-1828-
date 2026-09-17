@@ -1,0 +1,5 @@
+set(CMAKE_SYSTEM_NAME Linux)
+set(CMAKE_SYSTEM_PROCESSOR aarch64)
+set(RK_GCC_ROOT "/home/user/PycharmProjects/shize/RK3588/04、linux6.1_sdk/atk_dlrk3588_linux6.1/prebuilts/gcc/linux-x86/aarch64/gcc-arm-10.3-2021.07-x86_64-aarch64-none-linux-gnu/bin")
+set(CMAKE_C_COMPILER "${RK_GCC_ROOT}/aarch64-none-linux-gnu-gcc")
+set(CMAKE_CXX_COMPILER "${RK_GCC_ROOT}/aarch64-none-linux-gnu-g++")

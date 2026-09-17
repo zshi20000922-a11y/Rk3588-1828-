@@ -1,0 +1,17 @@
+.venv/
+node_modules/
+dist/
+build/
+*.pyc
+__pycache__/
+.pytest_cache/
+*.egg-info/
+*.tsbuildinfo
+data/*.db
+data/uploads/*
+data/kv/*
+!data/uploads/.gitkeep
+!data/kv/.gitkeep
+experiments/*/raw.jsonl
+experiments/*/metrics.csv
+experiments/*/system.csv
