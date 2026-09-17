@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import shutil
+import socket
 import subprocess
 import time
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 
 class CameraProvider(ABC):
@@ -42,7 +44,14 @@ class VideoCamera(CameraProvider):
 
 class RtspCamera(CameraProvider):
     def status(self) -> dict[str, Any]:
-        return {"id": self.id, "name": self.name, "provider": "rtsp", "online": True,
+        parsed = urlparse(self.source)
+        online = False
+        try:
+            with socket.create_connection((parsed.hostname or "127.0.0.1", parsed.port or 554), timeout=0.2):
+                online = True
+        except OSError:
+            pass
+        return {"id": self.id, "name": self.name, "provider": "rtsp", "online": online,
                 "stream_url": self.source, "note": "Browser playback requires the configured HLS/WebRTC gateway."}
 
     def snapshot(self, target: Path) -> Path:
@@ -69,3 +78,7 @@ class CameraRegistry:
             raise KeyError(camera_id)
         return self.items[camera_id].snapshot(directory / f"{camera_id}-{int(time.time() * 1000)}.jpg")
 
+    def get(self, camera_id: str) -> CameraProvider:
+        if camera_id not in self.items:
+            raise KeyError(camera_id)
+        return self.items[camera_id]

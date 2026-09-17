@@ -23,6 +23,10 @@ models:
       max_context_tokens: 1024
       modalities: [text, image, audio]
 cameras:
+  - id: imx415-live
+    name: IMX415 real camera
+    provider: rtsp
+    source: rtsp://127.0.0.1:8554/mosaic
   - id: demo
     name: Demo camera
     provider: image
