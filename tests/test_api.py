@@ -1,11 +1,13 @@
 import os
+import socketserver
+import threading
 from pathlib import Path
 
 os.environ.setdefault("RK_PLATFORM_CONFIG", str(Path(__file__).parents[1] / "config/platform.test.yaml"))
 
 from fastapi.testclient import TestClient
 from rk_platform.app import app
-from rk_platform.cameras import build_preview_command
+from rk_platform.cameras import RtspCamera, build_preview_command
 from rk_platform.preview import extract_jpeg_frames
 from rk_platform.vision import VisionController
 
@@ -86,3 +88,18 @@ def test_jpeg_stream_parser_handles_noise_and_partial_frames():
     buffer.extend(b"-rest\xff\xd9trailing")
     assert extract_jpeg_frames(buffer) == [b"\xff\xd8partial-rest\xff\xd9"]
     assert buffer == bytearray(b"g")
+
+
+def test_rtsp_status_checks_the_path_instead_of_only_the_port():
+    class Handler(socketserver.BaseRequestHandler):
+        def handle(self):
+            request = self.request.recv(1024)
+            status = b"200 OK" if b"/camera-1 " in request else b"404 Not Found"
+            self.request.sendall(b"RTSP/1.0 " + status + b"\r\nCSeq: 1\r\n\r\n")
+
+    with socketserver.TCPServer(("127.0.0.1", 0), Handler) as server:
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        port = server.server_address[1]
+        assert RtspCamera("one", "one", f"rtsp://127.0.0.1:{port}/camera-1").status()["online"] is True
+        assert RtspCamera("two", "two", f"rtsp://127.0.0.1:{port}/camera-2").status()["online"] is False

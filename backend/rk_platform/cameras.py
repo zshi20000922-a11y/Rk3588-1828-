@@ -69,14 +69,35 @@ class VideoCamera(CameraProvider):
 
 
 class RtspCamera(CameraProvider):
-    def status(self) -> dict[str, Any]:
+    def __init__(self, camera_id: str, name: str, source: str):
+        super().__init__(camera_id, name, source)
+        self._last_probe_at = 0.0
+        self._last_probe_online = False
+
+    def _probe(self) -> bool:
+        """Probe the configured RTSP path, not only the shared server port."""
+        now = time.monotonic()
+        if now - self._last_probe_at < 2.0:
+            return self._last_probe_online
         parsed = urlparse(self.source)
         online = False
         try:
-            with socket.create_connection((parsed.hostname or "127.0.0.1", parsed.port or 554), timeout=0.2):
-                online = True
-        except OSError:
+            # A live GStreamer mount can wait for the next keyframe before it
+            # answers DESCRIBE; the board uses a 25-frame GOP at 25 FPS.
+            with socket.create_connection((parsed.hostname or "127.0.0.1", parsed.port or 554), timeout=2.0) as client:
+                client.settimeout(2.0)
+                request = (f"DESCRIBE {self.source} RTSP/1.0\r\nCSeq: 1\r\n"
+                           "Accept: application/sdp\r\nUser-Agent: rk-edge-ai-platform\r\n\r\n")
+                client.sendall(request.encode("ascii"))
+                status_line = client.recv(512).split(b"\r\n", 1)[0]
+                online = status_line.startswith(b"RTSP/1.0 200")
+        except (OSError, UnicodeError):
             pass
+        self._last_probe_at, self._last_probe_online = now, online
+        return online
+
+    def status(self) -> dict[str, Any]:
+        online = self._probe()
         return {"id": self.id, "name": self.name, "provider": "rtsp", "online": online,
                 "stream_url": self.source, "note": "Browser preview is provided by the built-in MJPEG gateway."}
 

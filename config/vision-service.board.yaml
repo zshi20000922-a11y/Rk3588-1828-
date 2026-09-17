@@ -74,3 +74,17 @@ outputs:
     udp_port: 5600
     rtsp_enabled: true
     rtsp_path: /mosaic
+  - id: focus0
+    kind: focus
+    source: cam0
+    codec: h264
+    width: 1280
+    height: 720
+    fps: 25
+    bitrate: 4000000
+    gop: 25
+    udp_enabled: false
+    udp_host: 127.0.0.1
+    udp_port: 5601
+    rtsp_enabled: true
+    rtsp_path: /focus/0
