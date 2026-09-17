@@ -23,3 +23,15 @@
 ## Daemon 热更新时 `MODEL_SETUP fail`
 
 RK1828 Context 仍被旧进程占用时，新进程加载模型会收到 `ACK_FAIL`。初版信号处理只设置退出标志，但服务线程阻塞在 `accept()`，导致 SIGTERM 后未退出。现已在信号处理时关闭监听 FD，使进程完成 Context 析构；部署脚本必须确认旧 PID 消失后才能启动新版。
+
+## 开机后 Daemon 卡在 Vision `Weight sync`
+
+原因是平台服务启动早于 `rknn3_transfer_proxy` 子进程完全就绪。代理进程出现也不代表固件与 DDR 已准备完成；启动脚本现在同时等待 PCIe 设备节点和 `rknn3_transfer_proxy_b98e6c51`，再留出 10 秒稳定时间后初始化 RK1828 模型。已经卡住的旧进程需要终止后重新启动，不能继续复用半初始化 Context。
+
+## 摄像头长回答出现 UTF-8 解码错误
+
+RKNN Tokenizer 可能把一个中文字符的 UTF-8 字节拆到两个回调。若每个回调直接封装成 JSON，Python 会在半个字符处报 `invalid continuation byte`。Daemon 现在缓存不完整字节序列，只发送可独立解码的 UTF-8 Token；这不是模型或摄像头故障。
+
+## 网线已连接但没有 IPv4
+
+`ethtool eth0` 显示 Link detected 和 1000Mb/s 只说明物理链路正常。执行 `udhcpc -i eth0 -q -n` 仍无租约，说明网络未提供 DHCP OFFER。此时只能使用 IPv6 link-local（需接口 zone）或按实际局域网参数配置固定 IPv4，不能随意指定地址。

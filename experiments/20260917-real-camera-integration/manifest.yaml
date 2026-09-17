@@ -1,0 +1,16 @@
+name: real-camera-integration
+date: 2026-09-17
+camera: IMX415
+capture_device: /dev/video44
+capture_format: NV12 3840x2160
+vision_service: rk_vision_service
+preview_source: rtsp://127.0.0.1:8554/mosaic
+browser_gateway: ffmpeg-mjpeg
+model: Qwen2.5-Omni-3B
+model_device: RK1828
+host_device: RK3588
+validation:
+  websocket_metrics: passed
+  mjpeg_preview: passed
+  snapshot: passed
+  vision_inference: passed

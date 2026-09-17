@@ -29,6 +29,17 @@ std::string field(const std::string& json, const std::string& key) {
   std::string out; for (++p; p < json.size(); ++p) { if (json[p] == '"') break; if (json[p] == '\\' && p + 1 < json.size()) ++p; out += json[p]; } return out;
 }
 std::string escaped(const std::string& text) { std::string out; for (char c : text) { if (c == '"' || c == '\\') out += '\\'; if (c == '\n') out += "\\n"; else out += c; } return out; }
+bool valid_utf8(const std::string& text) {
+  for (std::size_t i = 0; i < text.size();) {
+    const auto c = static_cast<unsigned char>(text[i]);
+    std::size_t continuation = c < 0x80 ? 0 : (c >= 0xc2 && c <= 0xdf ? 1 : (c >= 0xe0 && c <= 0xef ? 2 : (c >= 0xf0 && c <= 0xf4 ? 3 : 99)));
+    if (continuation == 99 || i + continuation >= text.size()) return false;
+    for (std::size_t j = 1; j <= continuation; ++j)
+      if ((static_cast<unsigned char>(text[i + j]) & 0xc0) != 0x80) return false;
+    i += continuation + 1;
+  }
+  return true;
+}
 std::vector<std::string> attachments(const std::string& json) { std::vector<std::string> out;auto p=json.find("\"attachments\"");if(p==std::string::npos)return out;p=json.find('[',p);auto end=json.find(']',p);while(p<end){p=json.find('"',p+1);if(p==std::string::npos||p>=end)break;auto e=json.find('"',p+1);if(e==std::string::npos||e>end)break;out.push_back(json.substr(p+1,e-p-1));p=e;}return out; }
 void send_line(int fd, const std::string& line) { auto data = line + "\n"; ::send(fd, data.data(), data.size(), MSG_NOSIGNAL); }
 void handle(int fd, rkedge::SessionManager& sessions) {
@@ -69,7 +80,17 @@ void handle(int fd, rkedge::SessionManager& sessions) {
     if (engine) {
       try {
         auto media=attachments(request);std::string image_path,audio_path;for(const auto& path:media){auto dot=path.find_last_of('.');auto ext=dot==std::string::npos?std::string{}:path.substr(dot);if(ext==".wav"||ext==".mp3"||ext==".m4a"||ext==".webm")audio_path=path;else image_path=path;}
-        auto metrics=engine->generate(conversation,prompt,image_path,audio_path,[&](const std::string& token){send_line(fd,"{\"type\":\"token\",\"text\":\""+escaped(token)+"\",\"request_id\":\""+escaped(request_id)+"\"}");});
+        // SentencePiece may return one UTF-8 code point split across callbacks. Buffer
+        // incomplete byte sequences so every JSON line is independently valid UTF-8.
+        std::string utf8_pending;
+        auto metrics=engine->generate(conversation,prompt,image_path,audio_path,[&](const std::string& token){
+          utf8_pending += token;
+          if (valid_utf8(utf8_pending)) {
+            send_line(fd,"{\"type\":\"token\",\"text\":\""+escaped(utf8_pending)+"\",\"request_id\":\""+escaped(request_id)+"\"}");
+            utf8_pending.clear();
+          }
+        });
+        if (!utf8_pending.empty()) send_line(fd,"{\"type\":\"token\",\"text\":\"\\uFFFD\",\"request_id\":\""+escaped(request_id)+"\"}");
         session.total_tokens=metrics.input_tokens+metrics.output_tokens;session.reused_tokens=metrics.reused_tokens;
         const double decode_s=(metrics.llm_ms-metrics.ttft_ms)/1000.0;const double decode_tps=decode_s>0?metrics.output_tokens/decode_s:0;
         send_line(fd,"{\"type\":\"done\",\"request_id\":\""+escaped(request_id)+"\",\"metrics\":{\"backend\":\"rknn3\",\"input_tokens\":"+std::to_string(metrics.input_tokens)+",\"output_tokens\":"+std::to_string(metrics.output_tokens)+",\"reused_tokens\":"+std::to_string(metrics.reused_tokens)+",\"vision_ms\":"+std::to_string(metrics.vision_ms)+",\"audio_ms\":"+std::to_string(metrics.audio_ms)+",\"ttft_ms\":"+std::to_string(metrics.ttft_ms)+",\"llm_ms\":"+std::to_string(metrics.llm_ms)+",\"total_ms\":"+std::to_string(metrics.total_ms)+",\"decode_tps\":"+std::to_string(decode_tps)+"}}");::close(fd);return;

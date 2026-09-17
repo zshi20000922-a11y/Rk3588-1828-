@@ -52,7 +52,7 @@ class RtspCamera(CameraProvider):
         except OSError:
             pass
         return {"id": self.id, "name": self.name, "provider": "rtsp", "online": online,
-                "stream_url": self.source, "note": "Browser playback requires the configured HLS/WebRTC gateway."}
+                "stream_url": self.source, "note": "Browser preview is provided by the built-in MJPEG gateway."}
 
     def snapshot(self, target: Path) -> Path:
         target.parent.mkdir(parents=True, exist_ok=True)

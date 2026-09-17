@@ -7,6 +7,14 @@ WEB_PID=$ROOT/data/web.pid
 start() {
   mkdir -p /run/rk-edge-ai "$ROOT/data/kv" "$ROOT/data/uploads"
   if [ ! -s "$DAEMON_PID" ] || ! kill -0 "$(cat "$DAEMON_PID")" 2>/dev/null; then
+    n=0
+    while { [ ! -e /dev/pcie-rkep-0000:01:00.0 ] || ! pgrep -f rknn3_transfer_proxy_b98e6c51 >/dev/null; } && [ "$n" -lt 30 ]; do
+      sleep 1
+      n=$((n+1))
+    done
+    # The proxy process appears before RK1828 firmware/DDR initialization is
+    # fully ready. Starting model weight synchronization immediately can hang.
+    sleep 10
     cd "$MODEL" || exit 1
     LD_LIBRARY_PATH="$MODEL/lib:${LD_LIBRARY_PATH:-}" RKEDGE_MODEL_ROOT="$MODEL/model" RKEDGE_KV_DIR="$ROOT/data/kv" \
       "$ROOT/bin/rk_inference_daemon" /run/rk-edge-ai/inference.sock "$ROOT/data/kv" \
