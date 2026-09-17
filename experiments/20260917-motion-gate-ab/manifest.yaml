@@ -1,0 +1,19 @@
+name: motion-gate-ab
+date: 2026-09-17
+base_commit: e67cff0
+device: RK3588 + RK1828
+camera: IMX415
+capture: 3840x2160@60
+detector: yolov5s-640.rknn
+detector_contexts: 3
+active_detect_fps: 15
+idle_detect_fps: 1
+motion: three_frame-640x360@30
+sample_seconds_per_mode: 20
+controlled_variable: motion.gate_detection
+scene: static-laboratory-view
+vision_service_sha256: cc409524bbf19c87f2bd17a4ce2d78915e5895532327fd81aeb0d379759ec99c
+notes:
+  - Both modes keep motion processing enabled so only gating behavior changes.
+  - Browser preview was not used during metric sampling.
+  - Moving-scene recall requires a separate controlled-video experiment.
