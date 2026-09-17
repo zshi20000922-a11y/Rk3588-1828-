@@ -35,3 +35,9 @@ RKNN Tokenizer 可能把一个中文字符的 UTF-8 字节拆到两个回调。�
 ## 网线已连接但没有 IPv4
 
 `ethtool eth0` 显示 Link detected 和 1000Mb/s 只说明物理链路正常。执行 `udhcpc -i eth0 -q -n` 仍无租约，说明网络未提供 DHCP OFFER。此时只能使用 IPv6 link-local（需接口 zone）或按实际局域网参数配置固定 IPv4，不能随意指定地址。
+
+## 页面能提交问题但一直没有回复
+
+先查看 `web.log` 是否每秒重复请求 `/cameras/*/stream`。旧版页面把 `Date.now()` 放入摄像头 URL，WebSocket 指标每秒刷新 React 时会重新启动 FFmpeg，最终挤占 Web 服务并让未完成的推理任务被销毁。新版使用稳定的预览 URL；部署后浏览器必须强制刷新以丢弃旧 JavaScript。
+
+若 `daemon.log` 同时出现 `wait_event timed out` 或 KV checkpoint 超时，说明拥塞已经使 RK1828 Runtime 失去响应。清理预览进程后整板重启，等待日志出现 `rk_inference_daemon listening`，再进行问答。板卡重启会清除 ADB 转发，PC 端需重新执行 `adb forward tcp:18081 tcp:8080`。
