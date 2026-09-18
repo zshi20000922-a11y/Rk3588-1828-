@@ -12,4 +12,4 @@ boundary_workloads:
   4096: 3650
 repeats_per_workload: 3
 sampling: {top_k: 1, top_p: 0.9, temperature: 1.0}
-decision: set board default context to 4096 and restore max_new_tokens to 512
+decision: single-turn prefill supports 4096, but production remains 1024 after subsequent KV/LRU validation exposed a compiled 1024-token KV buffer lens

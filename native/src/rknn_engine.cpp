@@ -4,6 +4,7 @@
 #include "audio_utils.h"
 #include "image_utils.h"
 #include "Tokenizer.h"
+#include <algorithm>
 #include <chrono>
 #include <cstdlib>
 #include <cstring>
@@ -59,7 +60,7 @@ struct RknnEngine::Impl {
     VocabInfo vocab{};tokenizer->GetVocabInfo(&vocab);embed.fd=open(path("Qwen2.5-Omni-3B-llm.embed.bin").c_str(),O_RDONLY);if(embed.fd<0)throw std::runtime_error("embedding open failed");
     struct stat st{};if(fstat(embed.fd,&st))throw std::runtime_error("embedding stat failed");embed.size=st.st_size;embed.data=static_cast<float16*>(mmap(nullptr,embed.size,PROT_READ,MAP_PRIVATE,embed.fd,0));if(embed.data==MAP_FAILED)throw std::runtime_error("embedding mmap failed");embed.vocab=vocab.vocab_size;embed.dim=(embed.size/embed.vocab)/sizeof(float16);
     capacity=env_size("RKEDGE_MAX_SESSIONS",4,1,64);max_new_tokens=env_size("RKEDGE_MAX_NEW_TOKENS",512,1,4096);
-    param.logits_name=(char*)"logits";param.max_context_len=env_size("RKEDGE_MAX_CONTEXT_TOKENS",1024,256,32768);param.sampling_param=SAMPLE_PARAMS;param.vocab_info.vocab_size=vocab.vocab_size;param.vocab_info.n_special_eos_id=vocab.n_special_eos_id;param.vocab_info.n_special_bos_id=vocab.n_special_bos_id;std::memcpy(param.vocab_info.special_eos_id,vocab.special_eos_id,sizeof(vocab.special_eos_id));std::memcpy(param.vocab_info.special_bos_id,vocab.special_bos_id,sizeof(vocab.special_bos_id));param.vocab_info.linefeed_id=vocab.linefeed_id;
+    param.logits_name=(char*)"logits";param.max_context_len=std::min(env_size("RKEDGE_MAX_CONTEXT_TOKENS",1024,256,32768),env_size("RKEDGE_COMPILED_KV_CONTEXT_TOKENS",1024,256,32768));param.sampling_param=SAMPLE_PARAMS;param.vocab_info.vocab_size=vocab.vocab_size;param.vocab_info.n_special_eos_id=vocab.n_special_eos_id;param.vocab_info.n_special_bos_id=vocab.n_special_bos_id;std::memcpy(param.vocab_info.special_eos_id,vocab.special_eos_id,sizeof(vocab.special_eos_id));std::memcpy(param.vocab_info.special_bos_id,vocab.special_bos_id,sizeof(vocab.special_bos_id));param.vocab_info.linefeed_id=vocab.linefeed_id;
     CallbackState bootstrap{tokenizer,[](const std::string&){}};EmbedCallbackState bootstrap_embed{&embed};RKLLMCallback cb{};cb.result_callback=result_cb;cb.result_userdata=&bootstrap;cb.tokenizer_callback=tokenizer_cb;cb.tokenizer_userdata=tokenizer;cb.embed_callback=embed_cb;cb.embed_userdata=&bootstrap_embed;
     int ret=init_qwen2_5_omni_model(&app,path("Qwen2.5-Omni-3B-llm.rknn").c_str(),path("Qwen2.5-Omni-3B-llm.weight").c_str(),path("Qwen2.5-Omni-3B-vision.rknn").c_str(),path("Qwen2.5-Omni-3B-vision.weight").c_str(),path("Qwen2.5-Omni-3B-audio.rknn").c_str(),path("Qwen2.5-Omni-3B-audio.weight").c_str(),&param,1,cb,0xff,0xff,0xff);if(ret)throw std::runtime_error("RKNN3 model init failed: "+std::to_string(ret));
     sessions.emplace("__bootstrap__",app.llm.rknn_sess);

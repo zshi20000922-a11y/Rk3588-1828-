@@ -11,6 +11,7 @@ inference:
   max_sessions: 4
   idle_swap_seconds: 900
   max_context_tokens: 1024
+  compiled_kv_context_tokens: 1024
   max_new_tokens: 512
 models:
   active: qwen2.5-omni-3b-rk1828
