@@ -1,0 +1,10 @@
+experiment_id: 20260918-explicit-kv-swap-20
+date: 2026-09-18
+model: Qwen2.5-Omni-3B
+max_context_tokens: 1024
+compiled_kv_context_tokens: 1024
+cycles: 20
+conversation_count: 1
+code_to_recall: JADE-17
+timeout_seconds: 30
+policy_under_test: explicit swap_out -> swap_in -> recall, no automatic LRU
