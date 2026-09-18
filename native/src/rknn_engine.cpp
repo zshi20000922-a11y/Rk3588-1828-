@@ -68,8 +68,10 @@ struct RknnEngine::Impl {
   ~Impl(){for(auto& [id,s]:sessions)if(s&&s!=app.llm.rknn_sess)rknn3_session_destroy(s);sessions.clear();release_qwen2_5_omni_model(&app);if(embed.data&&embed.data!=MAP_FAILED)munmap(embed.data,embed.size);if(embed.fd>=0)close(embed.fd);delete tokenizer;}
   rknn3_session* session(const std::string& id){
     auto it=sessions.find(id);if(it!=sessions.end()){last_access[id]=std::chrono::steady_clock::now();return it->second;}
-    // last_access contains only user sessions; bootstrap must not consume pool capacity.
-    if(last_access.size()>=capacity){auto victim=last_access.end();for(auto pos=last_access.begin();pos!=last_access.end();++pos)if(victim==last_access.end()||pos->second<victim->second)victim=pos;if(victim!=last_access.end()){auto sit=sessions.find(victim->first);if(sit!=sessions.end()){if(rknn3_session_save_kvcache(sit->second,(kv_dir/(victim->first+".kv")).c_str()))throw std::runtime_error("KV eviction save failed: "+victim->first);rknn3_session_destroy(sit->second);sessions.erase(sit);}last_access.erase(victim);}}
+    // RKNN3 KV checkpointing can block the whole device during consecutive
+    // automatic evictions. Fail closed until the vendor save/restore path is
+    // proven stable; callers can clear an idle session before retrying.
+    if(last_access.size()>=capacity)throw std::runtime_error("session capacity reached; clear an idle conversation before retrying");
     rknn3_session* s=rknn3_session_init(app.llm.rknn_ctx,&param,1);if(!s)throw std::runtime_error("session init failed");rknn3_session_set_chat_template(s,system_prompt,prompt_prefix,prompt_postfix);
     auto saved=kv_dir/(id+".kv");if(std::filesystem::exists(saved)&&rknn3_session_load_kvcache_from_path(s,saved.c_str())){rknn3_session_destroy(s);throw std::runtime_error("KV restore failed");}
     sessions[id]=s;last_access[id]=std::chrono::steady_clock::now();return s;
