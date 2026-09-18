@@ -4,6 +4,11 @@ MODEL=/userdata/rknn_Qwen2_5_Omni_demo
 DAEMON_PID=$ROOT/data/inference.pid
 WEB_PID=$ROOT/data/web.pid
 
+config_value() {
+  key=$1
+  awk -v key="$key" '/^inference:/{inside=1;next} inside && /^[^ ]/{exit} inside && $1==key":"{print $2;exit}' "$ROOT/config/platform.board.yaml"
+}
+
 start() {
   mkdir -p /run/rk-edge-ai "$ROOT/data/kv" "$ROOT/data/uploads"
   if [ ! -s "$DAEMON_PID" ] || ! kill -0 "$(cat "$DAEMON_PID")" 2>/dev/null; then
@@ -16,7 +21,12 @@ start() {
     # fully ready. Starting model weight synchronization immediately can hang.
     sleep 10
     cd "$MODEL" || exit 1
+    max_sessions=$(config_value max_sessions); max_sessions=${max_sessions:-4}
+    max_context=$(config_value max_context_tokens); max_context=${max_context:-1024}
+    max_new=$(config_value max_new_tokens); max_new=${max_new:-512}
     LD_LIBRARY_PATH="$MODEL/lib:${LD_LIBRARY_PATH:-}" RKEDGE_MODEL_ROOT="$MODEL/model" RKEDGE_KV_DIR="$ROOT/data/kv" \
+      RKEDGE_MAX_SESSIONS="${RKEDGE_MAX_SESSIONS:-$max_sessions}" RKEDGE_MAX_CONTEXT_TOKENS="${RKEDGE_MAX_CONTEXT_TOKENS:-$max_context}" \
+      RKEDGE_MAX_NEW_TOKENS="${RKEDGE_MAX_NEW_TOKENS:-$max_new}" \
       "$ROOT/bin/rk_inference_daemon" /run/rk-edge-ai/inference.sock "$ROOT/data/kv" \
       >>"$ROOT/daemon.log" 2>&1 & echo $! >"$DAEMON_PID"
   fi

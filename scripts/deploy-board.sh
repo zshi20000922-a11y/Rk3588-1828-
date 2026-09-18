@@ -7,10 +7,15 @@ adb push "$ROOT/backend" "$TARGET/"
 adb push "$ROOT/config" "$TARGET/"
 adb push "$ROOT/frontend/dist" "$TARGET/frontend/"
 adb push "$ROOT/scripts/board-start.sh" "$TARGET/"
+adb push "$ROOT/scripts/S97rk-edge-ai" /etc/init.d/S97rk-edge-ai
 adb push "$ROOT/scripts/S98mediamtx" /etc/init.d/S98mediamtx
 adb push "$ROOT/pyproject.toml" "$TARGET/"
 if [ -d "$ROOT/build/wheelhouse-aarch64" ]; then adb push "$ROOT/build/wheelhouse-aarch64" "$TARGET/"; fi
-if [ -x "$ROOT/build/native-aarch64-gcc10/rk_inference_daemon" ]; then adb push "$ROOT/build/native-aarch64-gcc10/rk_inference_daemon" "$TARGET/bin/"; fi
+if [ -x "$ROOT/build/native-rknn3-aarch64-rk3588/rk_inference_daemon" ]; then
+  adb push "$ROOT/build/native-rknn3-aarch64-rk3588/rk_inference_daemon" "$TARGET/bin/"
+elif [ -x "$ROOT/build/native-aarch64-gcc10/rk_inference_daemon" ]; then
+  adb push "$ROOT/build/native-aarch64-gcc10/rk_inference_daemon" "$TARGET/bin/"
+fi
 adb shell "chmod +x $TARGET/board-start.sh $TARGET/bin/rk_inference_daemon 2>/dev/null || true"
-adb shell "chmod +x /etc/init.d/S98mediamtx"
+adb shell "chmod +x /etc/init.d/S97rk-edge-ai /etc/init.d/S98mediamtx"
 echo "Deployed to $TARGET. Install the offline wheelhouse and start the service as documented."
