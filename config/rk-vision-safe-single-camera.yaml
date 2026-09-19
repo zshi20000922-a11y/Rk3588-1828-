@@ -1,0 +1,50 @@
+version: 1
+
+# Diagnostic baseline: no HDMI compositor and no MPP encoder.  Keep this
+# separate from the production config so recovery is a single file switch.
+service:
+  results_socket: /run/rk-vision-service/results.sock
+  control_socket: /run/rk-vision-service/control.sock
+  log_dir: /userdata/rk-vision-service/logs
+  stale_result_ms: 250
+  rtsp_port: 8554
+
+model:
+  path: /userdata/rk-vision-service/models/yolov5s-640.rknn
+  manifest: /userdata/rk-vision-service/models/yolov5s-640.yaml
+  labels: /userdata/rk-vision-service/models/coco80.txt
+  family: yolov5
+  contexts: 1
+  auto_select_cores: true
+  confidence: 0.25
+  nms_iou: 0.45
+  max_detections: 100
+  class_agnostic_nms: false
+  class_filter: []
+
+tracker:
+  enabled: false
+
+motion:
+  enabled: false
+
+display:
+  enabled: false
+  backend: wayland
+  width: 1280
+  height: 720
+  fps: 15
+  sources: [cam0]
+
+sources:
+  - id: cam0
+    type: v4l2
+    uri: /dev/video44
+    enabled: true
+    width: 3840
+    height: 2160
+    fps: 60
+    buffers: 4
+    detect_fps: 5
+
+outputs:
