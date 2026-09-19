@@ -1,0 +1,95 @@
+--- a/include/rkvs/mosaic_compositor.hpp
++++ b/include/rkvs/mosaic_compositor.hpp
+@@ -21,6 +21,7 @@
+   uint64_t frames() const;
+   uint64_t dropped() const;
+   double last_rga_ms() const;
++  bool idle() const;
+ 
+  private:
+   class Impl;
+--- a/src/rkvs/mosaic_compositor.cc
++++ b/src/rkvs/mosaic_compositor.cc
+@@ -226,14 +226,31 @@
+   void loop() {
+     const uint64_t period = 1000000000ULL / std::max(1, config.fps);
+     uint64_t next = monotonic_ns();
++    bool dirty = false;
+     while (running) {
+-      for (auto& frame : consumer.take_ready()) latest[frame->source_id] = frame;
+-      const uint64_t now = monotonic_ns();
+-      if (now < next) {
+-        std::this_thread::sleep_for(std::chrono::nanoseconds(next - now));
++      auto ready = consumer.take_ready();
++      bool accepted = false;
++      for (auto& frame : ready) {
++        if (std::find(source_ids.begin(), source_ids.end(), frame->source_id) ==
++            source_ids.end())
++          continue;
++        latest[frame->source_id] = frame;
++        accepted = true;
++      }
++      if (accepted) {
++        dirty = true;
++        last_input_ns = monotonic_ns();
++      }
++      if (!dirty) {
++        std::this_thread::sleep_for(std::chrono::milliseconds(5));
++        next = monotonic_ns();
+         continue;
+       }
++      const uint64_t now = monotonic_ns();
++      if (now < next)
++        std::this_thread::sleep_for(std::chrono::nanoseconds(next - now));
+       next = monotonic_ns() + period;
++      dirty = false;
+       int slot = acquire();
+       if (slot < 0) { ++dropped_count; continue; }
+       const uint64_t begin = monotonic_ns();
+@@ -380,6 +397,7 @@
+   std::thread thread;
+   std::atomic<uint64_t> frame_count{0}, dropped_count{0};
+   std::atomic<double> last_rga{0};
++  std::atomic<uint64_t> last_input_ns{0};
+   std::atomic<bool> reported_overlay_error{false};
+   uint64_t sequence = 0;
+ };
+@@ -401,5 +419,9 @@
+ uint64_t RgaMosaicCompositor::frames() const { return impl_->frame_count; }
+ uint64_t RgaMosaicCompositor::dropped() const { return impl_->dropped_count; }
+ double RgaMosaicCompositor::last_rga_ms() const { return impl_->last_rga; }
++bool RgaMosaicCompositor::idle() const {
++  const uint64_t last = impl_->last_input_ns.load();
++  return !last || monotonic_ns() - last > 250000000ULL;
++}
+ 
+ }  // namespace rkvs
+--- a/src/rkvs/main.cc
++++ b/src/rkvs/main.cc
+@@ -486,7 +486,8 @@
+         if (compositor)
+           response << ",\"mosaic_frames\":" << compositor->frames()
+                    << ",\"mosaic_dropped\":" << compositor->dropped()
+-                   << ",\"mosaic_rga_ms\":" << compositor->last_rga_ms();
++                   << ",\"mosaic_rga_ms\":" << compositor->last_rga_ms()
++                   << ",\"mosaic_idle\":" << (compositor->idle() ? "true" : "false");
+ #endif
+ #ifdef RKVS_HAS_DISPLAY
+         if (display)
+@@ -494,6 +495,16 @@
+                    << ",\"display_dropped\":" << display->dropped();
+ #endif
+ #ifdef RKVS_HAS_MPP_ENCODER
++        bool media_idle = !compositor || compositor->idle();
++        for (const auto& focus : focus_compositors)
++          media_idle = media_idle && focus->idle();
++        response << ",\"media_idle\":" << (media_idle ? "true" : "false")
++                 << ",\"focus_idle\":[";
++        for (size_t index = 0; index < focus_compositors.size(); ++index) {
++          if (index) response << ',';
++          response << (focus_compositors[index]->idle() ? "true" : "false");
++        }
++        response << ']';
+         response << ",\"encoders\":[";
+         for (size_t index = 0; index < encoders.size(); ++index) {
+           if (index) response << ',';

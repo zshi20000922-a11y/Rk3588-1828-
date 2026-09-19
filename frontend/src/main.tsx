@@ -69,6 +69,8 @@ type CameraSource = {
 };
 type VisionPipeline = {
   available: boolean;
+  media_idle: boolean;
+  media_state: "active" | "idle";
   detection_enabled: boolean;
   motion_enabled: boolean;
   motion_gate: boolean;
@@ -511,6 +513,9 @@ function App() {
               <small>
                 运动 {vision.active_detect_fps} FPS · 静止{" "}
                 {vision.idle_detect_fps} FPS
+              </small>
+              <small>
+                媒体链路：{vision.media_idle ? "空闲（等待新帧）" : "运行中"}
               </small>
             </div>
           ) : (

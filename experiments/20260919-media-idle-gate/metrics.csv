@@ -1,0 +1,12 @@
+case,window_s,metric,value,unit
+old_all_sources_disabled,1800,vision_cpu_mean,27.230,percent_one_core
+new_all_sources_disabled,30,vision_cpu_mean,9.400,percent_one_core
+new_all_sources_disabled,5,mosaic_frame_delta,0,frames
+new_all_sources_disabled,5,mosaic_encoder_delta,0,frames
+new_all_sources_disabled,5,focus0_encoder_delta,0,frames
+new_all_sources_disabled,5,focus1_encoder_delta,0,frames
+new_cam0_active_cam1_disabled,10,mosaic_encoder_delta,250,frames
+new_cam0_active_cam1_disabled,10,focus0_encoder_delta,600,frames
+new_cam0_active_cam1_disabled,10,focus1_encoder_delta,0,frames
+new_cam0_wakeup,1,wake_to_first_frame,337.114,ms
+

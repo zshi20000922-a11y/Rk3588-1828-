@@ -77,6 +77,8 @@ class VisionController:
         source = (config.get("sources") or [{}])[0]
         return {
             "available": True,
+            "media_idle": bool(runtime.get("media_idle", False)),
+            "media_state": "idle" if runtime.get("media_idle", False) else "active",
             "detection_enabled": not bool(runtime.get("paused", False)),
             "motion_enabled": bool(motion.get("enabled", False)),
             "motion_gate": bool(motion.get("gate_detection", False)),

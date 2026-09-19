@@ -2,6 +2,10 @@
 
 ## 2026-09-19
 
+- 视觉服务 Mosaic/Focus 改为新帧驱动，输入源停止后不再通过 RGA/MPP 重复编码最后一帧；状态接口新增 `media_idle`、`mosaic_idle` 和 `focus_idle`，页面显示媒体链路运行/空闲状态。
+- 修复 Focus 合成器未过滤绑定 `source_id` 的问题；cam0 帧不再错误唤醒已禁用 cam1 对应的 focus1 黑帧编码链路。
+- 板端初测两路源关闭时 5 秒内 Mosaic 与三个编码器计数增量均为 0，视觉进程 CPU 从旧基线约 27.23% 降至约 9.4%；cam0 唤醒到首帧约 337 ms，恢复后维持约 60 FPS。代码、指标与回滚信息归档于 `experiments/20260919-media-idle-gate/`。
+- 将 cam1 的禁用状态持久化到板端配置，避免视觉服务重启时短暂占用用户留给其他任务的摄像头；原二进制保留为 `rk_vision_service.pre-idle-gate-20260919` 以便回滚。
 - 完成 RK1828 四会话、RK3588 单摄像头 60 FPS 并行负载的 30 分钟稳态实验：360/360 请求正确，零错误、零串话；KV Recall TTFT P50/P95 为 95.11/96.89 ms，Decode TPS 均值 87.82。
 - cam0 平均采集 59.964 FPS、YOLO 4.986 FPS，采集丢帧/超时/重连均为 0；cam1 全程禁用，避免干扰用户的独立摄像头任务。
 - 实验原始请求、系统与视觉时间序列、哈希清单、汇总指标和详细结论归档至 `experiments/20260919-steady-30m-single-camera/`。
