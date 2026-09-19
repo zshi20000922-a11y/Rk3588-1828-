@@ -137,7 +137,8 @@ main {
   font-size: 11px;
   color: #768e94;
 }
-.camera iframe {
+.camera iframe,
+.camera img {
   cursor: zoom-in;
   border: 0;
 }
@@ -188,7 +189,8 @@ main {
   padding: 8px 11px;
   cursor: pointer;
 }
-.camera-modal > iframe {
+.camera-modal > iframe,
+.camera-modal > img {
   border: 0;
   width: 100%;
   height: calc(100% - 54px);

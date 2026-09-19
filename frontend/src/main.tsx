@@ -287,8 +287,10 @@ function App() {
   };
   const fullscreen = () =>
     document.getElementById("camera-modal")?.requestFullscreen?.();
-  const webrtcUrl = (camera: CameraSource) =>
-    `http://${location.hostname}:8889/${camera.id}/?controls=false&muted=true&autoplay=true`;
+  // Keep the browser preview on the same HTTP origin. WebRTC ICE cannot cross
+  // an ADB TCP forward reliably and leaves a valid RTSP stream looking black.
+  const previewUrl = (camera: CameraSource) =>
+    `${API}/cameras/${camera.id}/stream?token=${encodeURIComponent(token)}`;
   const cameraSourceId = (cameraId: string) =>
     cameraId === "camera-1" ? "cam0" : cameraId === "camera-2" ? "cam1" : "";
   const temp = snapshot
@@ -490,12 +492,12 @@ function App() {
           <Metric
             icon={<Camera />}
             label="预览协议"
-            value="WebRTC"
+            value="MJPEG（MPP）"
           />
           <Metric
             icon={<Activity />}
             label="视频输出"
-            value="720p60"
+            value="960×540 / 8 FPS"
           />
         </div>
         <div className="panel">
@@ -622,11 +624,10 @@ function App() {
                 expandedCamera?.id === c.id ? (
                   <div className="camera-offline">已在大画面显示</div>
                 ) : (
-                  <iframe
+                  <img
                     onDoubleClick={() => setExpandedCamera(c)}
-                    src={webrtcUrl(c)}
-                    title={`${c.name} WebRTC 实时画面`}
-                    allow="autoplay; fullscreen"
+                    src={previewUrl(c)}
+                    alt={`${c.name} 实时画面`}
                   />
                 )
               ) : (
@@ -729,10 +730,9 @@ function App() {
               </button>
             </div>
           </div>
-          <iframe
-            src={webrtcUrl(expandedCamera)}
-            title={`${expandedCamera.name} WebRTC 放大画面`}
-            allow="autoplay; fullscreen"
+          <img
+            src={previewUrl(expandedCamera)}
+            alt={`${expandedCamera.name} 放大画面`}
           />
         </div>
       )}
