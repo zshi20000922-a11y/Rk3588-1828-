@@ -492,12 +492,12 @@ function App() {
           <Metric
             icon={<Camera />}
             label="预览协议"
-            value="MJPEG（MPP）"
+            value="MJPEG（USB 降级）"
           />
           <Metric
             icon={<Activity />}
             label="视频输出"
-            value="960×540 / 8 FPS"
+            value="640×360 / 5 FPS"
           />
         </div>
         <div className="panel">

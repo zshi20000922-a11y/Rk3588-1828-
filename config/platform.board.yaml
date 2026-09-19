@@ -23,10 +23,10 @@ cameras:
   - {id: dual-view, name: 双摄拼接流, provider: rtsp, source: 'rtsp://127.0.0.1:8554/mosaic'}
   - {id: demo, name: Demo camera, provider: image, source: /userdata/rknn_Qwen2_5_Omni_demo/demo.jpg}
 camera_preview:
-  backend: gstreamer_mpp
-  width: 960
-  height: 540
-  fps: 8
+  backend: ffmpeg
+  width: 640
+  height: 360
+  fps: 5
   quality: 70
   latency_ms: 50
   idle_seconds: 2

@@ -32,6 +32,6 @@
 
 `IMX415 4K60 -> ISP -> RGA 720p -> MPP H.264 60 FPS -> RTSP -> MediaMTX -> WebRTC -> 浏览器 video`
 
-MediaMTX 仅转协议，不解码和重新编码 H.264。由于浏览器 WebRTC 的 ICE 媒体通道不能可靠穿过 ADB TCP 转发，USB 调试页面默认使用同源 MJPEG 网关；网关通过 RK3588 MPP 解码和 JPEG 编码，当前为 960×540、8 FPS。局域网直连时仍可使用 MediaMTX WebRTC 获得更高帧率。YOLO 独立采样，不与页面预览帧率绑定。
+MediaMTX 仅转协议，不解码和重新编码 H.264。由于浏览器 WebRTC 的 ICE 媒体通道不能可靠穿过 ADB TCP 转发，USB 调试页面默认使用共享 CPU MJPEG 降级流，当前为 640×360、5 FPS。双路 MPP MJPEG 会与主视觉服务竞争 RGA/RKVDEC，30 秒实测新增 647 条内核错误，不能作为稳定方案。局域网直连仍使用 MediaMTX WebRTC 获得更高帧率。YOLO 独立采样，不与页面预览帧率绑定。
 
 “分析当前帧”会从对应独立 RTSP 流抓取一张 1280×720 JPEG，先作为用户消息图片插入当前对话，再将同一个文件路径提交给 RK1828 Vision。历史消息接口会把附件恢复为受管理员令牌保护的只读 URL，因此刷新页面后仍能确认模型分析的具体帧。
