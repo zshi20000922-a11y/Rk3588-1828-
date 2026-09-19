@@ -1,0 +1,25 @@
+experiment: steady-30m-capture-and-yolo-disabled
+date: 2026-09-19
+git_commit: 89f95e786158b29fe97ef7a5442f3401cd69e77e
+board:
+  model: ATK-DLRK3588 Board
+  kernel: 6.1.141
+  os: Buildroot 2024.02
+accelerator: RK1828 over PCIe
+model:
+  id: qwen2.5-omni-3b-rk1828
+  quantization: GRQ W4A16 / KV FP16
+  compiled_kv_context_tokens: 1024
+workload:
+  duration_seconds: 1800
+  request_interval_seconds: 5
+  sessions: 4
+  refresh_turns: 16
+  cam0_enabled: false
+  cam1_enabled: false
+  note: camera capture and YOLO stopped; the media compositor and MPP stale-frame outputs remained active
+comparison: ../20260919-steady-30m-single-camera
+artifacts:
+  raw/requests.jsonl: 2f7cad7e6bd0dd133d86a5ed3e1624cecefb3ebcb026d2261b22af701844d9c9
+  raw/system.csv: ea400e621115aa61bc22bb46ad85d97cf72be515897205228424488d3a3f9c6e
+  raw/vision.jsonl: aebb039c135fb111c5a94edd0512ff370846b8f173afadd8e3ed55679da8686c
