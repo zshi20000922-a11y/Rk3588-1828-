@@ -1,7 +1,8 @@
 logLevel: info
 logDestinations: [stdout, file]
 logFile: /userdata/rk-edge-ai/mediamtx-runtime.log
-rtsp: no
+rtsp: yes
+rtspAddress: :8555
 rtmp: no
 hls: no
 srt: no
@@ -24,3 +25,7 @@ paths:
     source: rtsp://127.0.0.1:8554/focus/1
   dual-view:
     source: rtsp://127.0.0.1:8554/mosaic
+  demo-global:
+    source: udp+mpegts://127.0.0.1:7000
+  demo-roi:
+    source: udp+mpegts://127.0.0.1:7001

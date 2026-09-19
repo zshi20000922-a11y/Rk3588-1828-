@@ -21,6 +21,8 @@ cameras:
   - {id: camera-1, name: 摄像头 1, provider: rtsp, source: 'rtsp://127.0.0.1:8554/focus/0'}
   - {id: camera-2, name: 摄像头 2, provider: rtsp, source: 'rtsp://127.0.0.1:8554/focus/1'}
   - {id: dual-view, name: 双摄拼接流, provider: rtsp, source: 'rtsp://127.0.0.1:8554/mosaic'}
+  - {id: demo-global, name: 全局搜索相机, provider: rtsp, source: 'rtsp://127.0.0.1:8555/demo-global'}
+  - {id: demo-roi, name: 高速 ROI 相机, provider: rtsp, source: 'rtsp://127.0.0.1:8555/demo-roi'}
   - {id: demo, name: Demo camera, provider: image, source: /userdata/rknn_Qwen2_5_Omni_demo/demo.jpg}
 camera_preview:
   backend: ffmpeg
@@ -36,3 +38,12 @@ vision_service:
   enabled: true
   control_socket: /run/rk-vision-service/control.sock
   config_path: /userdata/rk-vision-service/config.yaml
+dual_roi_demo:
+  enabled: true
+  control_socket: /run/rknn-dual-detector/control.sock
+  detector_service: /etc/init.d/S95rknn-dual-detector
+  vision_service: /etc/init.d/S96rk-vision-service
+  start_timeout_seconds: 15
+  validation_path: /userdata/rknn-dual-detector/config/homography_validation.json
+  mapping_p95_limit_px: 160
+  require_validation: true

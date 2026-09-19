@@ -84,6 +84,34 @@ type VisionPipeline = {
   active_detect_fps: number;
   idle_detect_fps: number;
 };
+type DualRoiDemo = {
+  available: boolean;
+  active: boolean;
+  ready: boolean;
+  mode: string;
+  track_id: number;
+  roi: [number, number, number, number];
+  target_visible: boolean;
+  mapping_error_px: number | null;
+  frame_delta_ms: number | null;
+  match_confidence: number | null;
+  projected_fallback: boolean;
+  switch_ms: number;
+  switches: number;
+  switch_failures: number;
+  cameras: Array<{
+    id: string;
+    capture_fps: number;
+    result_fps: number;
+    capture_width: number;
+    capture_height: number;
+    dropped: number;
+    timeouts: number;
+  }>;
+  pipeline_errors: number;
+  error: string;
+  preflight?: { ok: boolean };
+};
 const API = "/api/v1";
 
 function App() {
@@ -98,6 +126,8 @@ function App() {
   const [models, setModels] = useState<any>(null);
   const [cameras, setCameras] = useState<CameraSource[]>([]);
   const [vision, setVision] = useState<VisionPipeline | null>(null);
+  const [dualRoi, setDualRoi] = useState<DualRoiDemo | null>(null);
+  const [dualRoiBusy, setDualRoiBusy] = useState("");
   const [visionBusy, setVisionBusy] = useState("");
   const [expandedCamera, setExpandedCamera] = useState<CameraSource | null>(
     null,
@@ -136,6 +166,16 @@ function App() {
     request("/vision/pipeline")
       .then(setVision)
       .catch(() => setVision(null));
+    request("/demo/dual-roi")
+      .then(setDualRoi)
+      .catch(() => setDualRoi(null));
+  }, [token]);
+  useEffect(() => {
+    const stream = new EventSource(
+      `${API}/demo/dual-roi/events?token=${encodeURIComponent(token)}`,
+    );
+    stream.onmessage = (event) => setDualRoi(JSON.parse(event.data));
+    return () => stream.close();
   }, [token]);
   useEffect(() => {
     if (!current) return;
@@ -285,12 +325,64 @@ function App() {
       setVisionBusy("");
     }
   };
+  const dualRoiAction = async (
+    action: "start" | "stop" | "unlock" | "full-frame",
+  ) => {
+    setDualRoiBusy(action);
+    try {
+      setDualRoi(
+        await request(`/demo/dual-roi/${action}`, { method: "POST" }),
+      );
+      request("/cameras").then(setCameras).catch(() => {});
+    } finally {
+      setDualRoiBusy("");
+    }
+  };
+  const setProjectedFallback = async (enabled: boolean) => {
+    setDualRoiBusy("fallback");
+    try {
+      setDualRoi(
+        await request("/demo/dual-roi/projected-fallback", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ enabled }),
+        }),
+      );
+    } finally {
+      setDualRoiBusy("");
+    }
+  };
   const fullscreen = () =>
     document.getElementById("camera-modal")?.requestFullscreen?.();
   // Keep the browser preview on the same HTTP origin. WebRTC ICE cannot cross
   // an ADB TCP forward reliably and leaves a valid RTSP stream looking black.
   const previewUrl = (camera: CameraSource) =>
     `${API}/cameras/${camera.id}/stream?token=${encodeURIComponent(token)}`;
+  const demoPreview = (id: "demo-global" | "demo-roi", name: string) => {
+    const switching = dualRoi?.mode === "SWITCHING_TO_ROI";
+    const localUsb = location.hostname === "127.0.0.1" || location.hostname === "localhost";
+    return (
+      <div className="dual-roi-video">
+        {!dualRoi?.active ? (
+          <div className="dual-roi-placeholder">等待启动</div>
+        ) : localUsb ? (
+          <img src={`${API}/cameras/${id}/stream?token=${encodeURIComponent(token)}`} alt={name} />
+        ) : (
+          <iframe
+            src={`http://${location.hostname}:8889/${id}/?controls=false&muted=true&autoplay=true`}
+            title={name}
+            allow="autoplay; fullscreen"
+          />
+        )}
+        {switching && (
+          <div className="dual-roi-freeze">
+            正在切换高速 ROI…
+          </div>
+        )}
+        <b>{name}</b>
+      </div>
+    );
+  };
   const cameraSourceId = (cameraId: string) =>
     cameraId === "camera-1" ? "cam0" : cameraId === "camera-2" ? "cam1" : "";
   const temp = snapshot
@@ -499,6 +591,51 @@ function App() {
             label="视频输出"
             value="640×360 / 5 FPS"
           />
+        </div>
+        <div className="panel dual-roi-panel">
+          <h3><Camera size={17} /> 全局搜索 / 高速 ROI</h3>
+          <div className="dual-roi-stage">
+            {["GLOBAL_SEARCH", "CROSS_CAMERA_MATCH", "SWITCHING_TO_ROI", "ROI_TRACK", "TARGET_LOST", "GLOBAL_REACQUIRE"].map((stage) => (
+              <span key={stage} className={dualRoi?.mode === stage ? "active" : ""}>{stage}</span>
+            ))}
+          </div>
+          <div className="dual-roi-grid">
+            {demoPreview("demo-global", "Camera 0 · 全局搜索")}
+            {demoPreview("demo-roi", "Camera 1 · 硬件 ROI")}
+          </div>
+          <div className="dual-roi-controls">
+            <button
+              className={dualRoi?.active ? "danger" : "active"}
+              disabled={!!dualRoiBusy || !dualRoi?.available || (!dualRoi?.active && dualRoi?.preflight?.ok === false)}
+              onClick={() => dualRoiAction(dualRoi?.active ? "stop" : "start")}
+            >
+              {dualRoiBusy ? "处理中…" : dualRoi?.active ? "退出 Demo" : "启动 Demo"}
+            </button>
+            <button disabled={!dualRoi?.active || !!dualRoiBusy} onClick={() => dualRoiAction("unlock")}>解除目标</button>
+            <button disabled={!dualRoi?.active || !!dualRoiBusy} onClick={() => dualRoiAction("full-frame")}>恢复全画幅</button>
+            <button
+              className={dualRoi?.projected_fallback ? "warning" : ""}
+              disabled={!dualRoi?.active || !!dualRoiBusy}
+              onClick={() => setProjectedFallback(!dualRoi?.projected_fallback)}
+            >演示辅助投影：{dualRoi?.projected_fallback ? "开" : "关"}</button>
+          </div>
+          <dl className="dual-roi-metrics">
+            <dt>状态</dt><dd>{dualRoi?.mode || "不可用"}</dd>
+            <dt>Track ID</dt><dd>{dualRoi?.track_id || 0}</dd>
+            <dt>ROI</dt><dd>{dualRoi?.roi?.join(", ") || "0, 0, 640, 640"}</dd>
+            <dt>匹配置信度</dt><dd>{dualRoi?.match_confidence == null ? "—" : dualRoi.match_confidence.toFixed(3)}</dd>
+            <dt>映射误差</dt><dd>{dualRoi?.mapping_error_px == null ? "—" : `${dualRoi.mapping_error_px.toFixed(1)} px`}</dd>
+            <dt>帧时间差</dt><dd>{dualRoi?.frame_delta_ms == null ? "—" : `${dualRoi.frame_delta_ms.toFixed(1)} ms`}</dd>
+            <dt>切换耗时</dt><dd>{dualRoi?.switch_ms ? `${dualRoi.switch_ms.toFixed(1)} ms` : "—"}</dd>
+            {(dualRoi?.cameras || []).map((camera) => (
+              <React.Fragment key={camera.id}>
+                <dt>{camera.id}</dt>
+                <dd>{camera.capture_width}×{camera.capture_height} · {camera.capture_fps.toFixed(1)} / {camera.result_fps.toFixed(1)} FPS</dd>
+              </React.Fragment>
+            ))}
+          </dl>
+          {dualRoi?.error && <p className="dual-roi-error">{dualRoi.error}</p>}
+          <small className="panel-hint">单目标人员演示模式 · 投影 fallback 默认关闭</small>
         </div>
         <div className="panel">
           <h3>视觉流水线</h3>

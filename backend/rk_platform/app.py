@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 from .cameras import CameraRegistry, RtspCamera
 from .config import load_config, resolve_path
 from .database import Database, now_iso
+from .dual_roi import DualRoiController
 from .events import EventBus
 from .experiments import ExperimentManager
 from .inference import create_backend
@@ -60,6 +61,10 @@ class VisionPipelinePatch(BaseModel):
     roi_modes: dict[str, str] | None = None
 
 
+class ProjectedFallbackRequest(BaseModel):
+    enabled: bool = False
+
+
 config = load_config()
 db = Database(resolve_path(config, config["server"]["database"]))
 events = EventBus()
@@ -71,6 +76,7 @@ preview_gateway = SharedMjpegGateway(camera_preview)
 experiments = ExperimentManager(Path(config["_root"]), db, config)
 tools = ToolRegistry(db)
 vision = VisionController(config.get("vision_service"))
+dual_roi = DualRoiController(config.get("dual_roi_demo"))
 active_requests: dict[str, str] = {}
 rk1828_requests: set[str] = set()
 
@@ -81,6 +87,7 @@ def platform_snapshot() -> dict[str, Any]:
     value["rk1828"]["phase"] = "inference" if rk1828_requests else "idle"
     value["rk1828"]["active_requests"] = len(rk1828_requests)
     value["camera_preview"] = preview_gateway.status()
+    value["dual_roi"] = dual_roi.status()
     return value
 
 
@@ -353,6 +360,78 @@ async def update_vision_pipeline(body: VisionPipelinePatch) -> dict[str, Any]:
                (str(uuid.uuid4()), None, "update_vision_pipeline", json.dumps(changes),
                 json.dumps({"ok": True}), now_iso()))
     return result
+
+
+def _audit_dual_roi(action: str, outcome: dict[str, Any]) -> None:
+    db.execute("INSERT INTO audit_log(request_id,conversation_id,tool,arguments,outcome,created_at) VALUES (?,?,?,?,?,?)",
+               (str(uuid.uuid4()), None, f"dual_roi_{action}", "{}",
+                json.dumps(outcome, ensure_ascii=False), now_iso()))
+
+
+@app.get("/api/v1/demo/dual-roi", dependencies=[Depends(require_token)])
+async def dual_roi_status() -> dict[str, Any]:
+    return await asyncio.to_thread(dual_roi.status)
+
+
+@app.post("/api/v1/demo/dual-roi/start", dependencies=[Depends(require_token)])
+async def dual_roi_start() -> dict[str, Any]:
+    await preview_gateway.close()
+    try:
+        result = await asyncio.to_thread(dual_roi.start)
+    except (OSError, RuntimeError, ValueError, subprocess.SubprocessError) as exc:
+        raise HTTPException(503, f"dual ROI start failed: {exc}")
+    _audit_dual_roi("start", {"ok": True, "mode": result.get("mode")})
+    return result
+
+
+@app.post("/api/v1/demo/dual-roi/stop", dependencies=[Depends(require_token)])
+async def dual_roi_stop() -> dict[str, Any]:
+    try:
+        result = await asyncio.to_thread(dual_roi.stop)
+    except (OSError, RuntimeError, ValueError, subprocess.SubprocessError) as exc:
+        raise HTTPException(503, f"dual ROI stop failed: {exc}")
+    _audit_dual_roi("stop", {"ok": True})
+    return result
+
+
+@app.post("/api/v1/demo/dual-roi/unlock", dependencies=[Depends(require_token)])
+@app.post("/api/v1/demo/dual-roi/full-frame", dependencies=[Depends(require_token)])
+async def dual_roi_unlock() -> dict[str, Any]:
+    try:
+        result = await asyncio.to_thread(dual_roi.command, "unlock")
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise HTTPException(503, f"dual ROI unlock failed: {exc}")
+    _audit_dual_roi("unlock", {"ok": True, "mode": result.get("mode")})
+    return result
+
+
+@app.post("/api/v1/demo/dual-roi/projected-fallback", dependencies=[Depends(require_token)])
+async def dual_roi_projected_fallback(body: ProjectedFallbackRequest) -> dict[str, Any]:
+    command = f"projected fallback {'on' if body.enabled else 'off'}"
+    try:
+        result = await asyncio.to_thread(dual_roi.command, command)
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise HTTPException(503, f"dual ROI fallback update failed: {exc}")
+    _audit_dual_roi("projected_fallback", {"ok": True, "enabled": body.enabled})
+    return result
+
+
+@app.get("/api/v1/demo/dual-roi/events")
+async def dual_roi_events(token: str) -> StreamingResponse:
+    if token != config["server"]["admin_token"]:
+        raise HTTPException(401, "invalid admin token")
+
+    async def stream():
+        previous = ""
+        while True:
+            status = await asyncio.to_thread(dual_roi.status)
+            payload = json.dumps(status, ensure_ascii=False, separators=(",", ":"))
+            if payload != previous:
+                yield f"data: {payload}\n\n"
+                previous = payload
+            await asyncio.sleep(0.25 if status.get("active") else 1.0)
+
+    return StreamingResponse(stream(), media_type="text/event-stream")
 
 
 @app.get("/api/v1/cameras/{camera_id}/stream")

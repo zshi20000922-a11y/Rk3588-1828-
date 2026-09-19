@@ -51,6 +51,14 @@ def test_vision_control_disabled_by_default():
         assert update.status_code == 503
 
 
+def test_dual_roi_demo_is_explicitly_disabled_in_test_profile():
+    with TestClient(app) as client:
+        status = client.get("/api/v1/demo/dual-roi", headers=TOKEN)
+        assert status.status_code == 200
+        assert status.json()["available"] is False
+        assert client.post("/api/v1/demo/dual-roi/start", headers=TOKEN).status_code == 503
+
+
 def test_shared_preview_status_is_observable():
     with TestClient(app) as client:
         status = client.get("/api/v1/cameras/preview/status", headers=TOKEN)

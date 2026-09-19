@@ -137,6 +137,24 @@ main {
   font-size: 11px;
   color: #768e94;
 }
+.dual-roi-panel { border-color: #31544d; }
+.dual-roi-stage { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 7px; }
+.dual-roi-stage span { white-space: nowrap; font-size: 8px; color: #657a80; border: 1px solid #263a40; border-radius: 10px; padding: 3px 6px; }
+.dual-roi-stage span.active { color: #70e2c8; border-color: #2d806d; background: #14332c; }
+.dual-roi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.dual-roi-video { position: relative; min-width: 0; }
+.dual-roi-video img, .dual-roi-video iframe { display: block; width: 100%; aspect-ratio: 16/9; object-fit: cover; border: 0; border-radius: 7px; background: #020506; }
+.dual-roi-placeholder { display: grid; place-items: center; width: 100%; aspect-ratio: 16/9; border-radius: 7px; background: #071013; color: #60767c; font-size: 10px; }
+.dual-roi-video b { display: block; margin-top: 4px; font-size: 9px; color: #91a5aa; }
+.dual-roi-freeze { position: absolute; inset: 0 0 17px; display: grid; place-items: center; background: #061013c9; color: #70e2c8; font-size: 10px; text-align: center; }
+.dual-roi-controls { display: flex; flex-wrap: wrap; gap: 5px; margin: 10px 0; }
+.dual-roi-controls button { border: 1px solid #2a4146; border-radius: 7px; background: #111e22; color: #9db0b5; padding: 6px 7px; font-size: 9px; cursor: pointer; }
+.dual-roi-controls button.active { color: #70e2c8; border-color: #2d806d; background: #14332c; }
+.dual-roi-controls button.danger { color: #f1a1a1; border-color: #6e3434; }
+.dual-roi-controls button.warning { color: #ecc672; border-color: #705b2c; }
+.dual-roi-controls button:disabled { opacity: .45; cursor: not-allowed; }
+.dual-roi-metrics { grid-template-columns: 1fr 1.5fr; }
+.dual-roi-error { color: #ed8b8b; font-size: 10px; overflow-wrap: anywhere; }
 .camera iframe,
 .camera img {
   cursor: zoom-in;

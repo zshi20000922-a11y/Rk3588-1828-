@@ -13,3 +13,4 @@ cameras: []
 camera_preview: {backend: ffmpeg, width: 960, height: 540, fps: 8, quality: 70, idle_seconds: 0}
 plugins: []
 vision_service: {enabled: false}
+dual_roi_demo: {enabled: false}

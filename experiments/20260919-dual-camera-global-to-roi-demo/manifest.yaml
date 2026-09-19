@@ -1,0 +1,14 @@
+experiment: dual-camera-global-to-hardware-roi-demo
+date: 2026-09-19
+target_class: person
+global_camera: cam0
+roi_camera: cam1
+global_mode: 3840x2160@60
+roi_mode: 640x640@112
+roi_detection_limit_fps: 60
+roi_move_limit_hz: 10
+lost_return_ms: 1500
+mapping: homography fitted 2026-08-24
+mapping_p95_gate_px: 160
+projected_fallback_default: false
+validation_status: pending_board_reconnect

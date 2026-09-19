@@ -2,6 +2,8 @@
 
 ## 2026-09-19
 
+- 新增双摄专家 Demo 控制面：Camera 0 全局搜索，跨摄确认后 Camera 1 切换 640×640@112 FPS Sensor ROI；页面展示状态机、两路流、ROI、匹配误差、检测/采集 FPS 与切换指标。
+- Demo 与普通视觉服务互斥并具备失败回滚；默认关闭投影 fallback，目标丢失 1.5 秒后恢复全画幅，RK1828 推理服务不参与切换。
 - 修复 USB/ADB 访问页面时双路摄像头黑屏：MediaMTX WebRTC 信令可经 TCP 转发，但 ICE 媒体连接持续超时；USB 页面改用 640×360@5 FPS 的共享 CPU MJPEG 降级流。双路 MPP MJPEG 实测会与主视觉服务争用 RGA/RKVDEC 并产生大量内核错误，因此禁止用于稳定演示；网线直连仍使用 WebRTC。
 - 为两路 Focus 流增加独立 RGA 自动人像 ROI：按 person 检测生成 16:9 裁剪区域、平滑跟随，目标丢失 1.5 秒后回到全画幅；Mosaic 保持全局视野。
 - 新增 cam0/cam1 独立 `full/auto` ROI 控制、跟踪状态和 ROI 坐标，Web 摄像头卡片可直接切换；两路 4K60 Sensor 与 ISP 配置保持不变。
