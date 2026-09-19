@@ -2,6 +2,9 @@
 
 ## 2026-09-19
 
+- 为两路 Focus 流增加独立 RGA 自动人像 ROI：按 person 检测生成 16:9 裁剪区域、平滑跟随，目标丢失 1.5 秒后回到全画幅；Mosaic 保持全局视野。
+- 新增 cam0/cam1 独立 `full/auto` ROI 控制、跟踪状态和 ROI 坐标，Web 摄像头卡片可直接切换；两路 4K60 Sensor 与 ISP 配置保持不变。
+- 双摄实测 cam0/cam1 均约 59.98 FPS、YOLO 均约 4.98 FPS、零采集错误；两个 Focus 浏览器流均返回 HTTP 200。当前场景无人时两路按设计保持全画幅并显示“等待人物目标”。
 - 视觉服务 Mosaic/Focus 改为新帧驱动，输入源停止后不再通过 RGA/MPP 重复编码最后一帧；状态接口新增 `media_idle`、`mosaic_idle` 和 `focus_idle`，页面显示媒体链路运行/空闲状态。
 - 修复 Focus 合成器未过滤绑定 `source_id` 的问题；cam0 帧不再错误唤醒已禁用 cam1 对应的 focus1 黑帧编码链路。
 - 板端初测两路源关闭时 5 秒内 Mosaic 与三个编码器计数增量均为 0，视觉进程 CPU 从旧基线约 27.23% 降至约 9.4%；cam0 唤醒到首帧约 337 ms，恢复后维持约 60 FPS。代码、指标与回滚信息归档于 `experiments/20260919-media-idle-gate/`。

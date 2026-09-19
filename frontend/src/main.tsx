@@ -71,6 +71,12 @@ type VisionPipeline = {
   available: boolean;
   media_idle: boolean;
   media_state: "active" | "idle";
+  roi: Array<{
+    source_id: string;
+    mode: "full" | "auto";
+    tracking: boolean;
+    rect: [number, number, number, number];
+  }>;
   detection_enabled: boolean;
   motion_enabled: boolean;
   motion_gate: boolean;
@@ -251,7 +257,7 @@ function App() {
       },
     ]);
   };
-  const updateVision = async (field: keyof VisionPipeline, value: boolean) => {
+  const updateVision = async (field: keyof VisionPipeline, value: unknown) => {
     setVisionBusy(String(field));
     try {
       setVision(
@@ -265,10 +271,26 @@ function App() {
       setVisionBusy("");
     }
   };
+  const setRoiMode = async (sourceId: string, mode: "full" | "auto") => {
+    setVisionBusy(`roi:${sourceId}`);
+    try {
+      setVision(
+        await request("/vision/pipeline", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ roi_modes: { [sourceId]: mode } }),
+        }),
+      );
+    } finally {
+      setVisionBusy("");
+    }
+  };
   const fullscreen = () =>
     document.getElementById("camera-modal")?.requestFullscreen?.();
   const webrtcUrl = (camera: CameraSource) =>
     `http://${location.hostname}:8889/${camera.id}/?controls=false&muted=true&autoplay=true`;
+  const cameraSourceId = (cameraId: string) =>
+    cameraId === "camera-1" ? "cam0" : cameraId === "camera-2" ? "cam1" : "";
   const temp = snapshot
     ? Object.values(snapshot.rk3588.temperatures_c)[0]
     : undefined;
@@ -621,6 +643,29 @@ function App() {
                   分析当前帧
                 </button>
               </div>
+              {cameraSourceId(c.id) && (() => {
+                const sourceId = cameraSourceId(c.id);
+                const roi = vision?.roi?.find((item) => item.source_id === sourceId);
+                const automatic = roi?.mode === "auto";
+                return (
+                  <div className="camera-roi-control">
+                    <button
+                      className={automatic ? "active" : ""}
+                      disabled={!c.online || visionBusy === `roi:${sourceId}`}
+                      onClick={() => setRoiMode(sourceId, automatic ? "full" : "auto")}
+                    >
+                      {automatic ? "自动 ROI" : "全画幅"}
+                    </button>
+                    <small>
+                      {roi?.tracking
+                        ? `跟踪中 · ${roi.rect.join(" × ")}`
+                        : automatic
+                          ? "等待人物目标"
+                          : "未启用跟踪"}
+                    </small>
+                  </div>
+                );
+              })()}
             </div>
           ))}
           {onlinePhysicalCameras.length < 2 && (

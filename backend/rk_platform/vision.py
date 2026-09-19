@@ -79,6 +79,7 @@ class VisionController:
             "available": True,
             "media_idle": bool(runtime.get("media_idle", False)),
             "media_state": "idle" if runtime.get("media_idle", False) else "active",
+            "roi": runtime.get("roi", []),
             "detection_enabled": not bool(runtime.get("paused", False)),
             "motion_enabled": bool(motion.get("enabled", False)),
             "motion_gate": bool(motion.get("gate_detection", False)),
@@ -92,7 +93,7 @@ class VisionController:
         if not self.enabled:
             raise RuntimeError("vision control is disabled")
         allowed = {"detection_enabled", "motion_enabled", "motion_gate", "tracking_enabled",
-                   "active_detect_fps", "idle_detect_fps"}
+                   "active_detect_fps", "idle_detect_fps", "roi_modes"}
         unknown = set(changes) - allowed
         if unknown:
             raise ValueError(f"unsupported vision fields: {', '.join(sorted(unknown))}")
@@ -123,7 +124,7 @@ class VisionController:
                 raise ValueError("idle_detect_fps must be 1..15")
             motion["idle_detect_fps"] = value
             original_text = self._replace_scalar(original_text, "motion", "idle_detect_fps", value)
-        soft_changed = any(key != "detection_enabled" for key in changes)
+        soft_changed = any(key not in {"detection_enabled", "roi_modes"} for key in changes)
         if soft_changed:
             previous_text = self.config_path.read_text(encoding="utf-8")
             self._save_text(original_text)
@@ -143,4 +144,15 @@ class VisionController:
             response = self._command({"command": command})
             if not response.get("ok"):
                 raise RuntimeError(response.get("error", "vision detection control failed"))
+        if "roi_modes" in changes:
+            for source_id, mode in changes["roi_modes"].items():
+                if source_id not in {str(item.get("id")) for item in sources}:
+                    raise ValueError(f"unknown ROI source: {source_id}")
+                if mode not in {"full", "auto"}:
+                    raise ValueError("ROI mode must be full or auto")
+                response = self._command(
+                    {"command": "set_roi_mode", "source_id": source_id, "mode": mode}
+                )
+                if not response.get("ok"):
+                    raise RuntimeError(response.get("error", "ROI mode update failed"))
         return self.status()

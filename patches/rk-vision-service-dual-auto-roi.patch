@@ -1,0 +1,212 @@
+diff --git a/include/rkvs/mosaic_compositor.hpp b/include/rkvs/mosaic_compositor.hpp
+--- a/include/rkvs/mosaic_compositor.hpp
++++ b/include/rkvs/mosaic_compositor.hpp
+@@ -22,6 +22,8 @@
+   uint64_t dropped() const;
+   double last_rga_ms() const;
+   bool idle() const;
++  bool set_roi_mode(const std::string& mode);
++  std::string roi_status_json() const;
+ 
+  private:
+   class Impl;
+diff --git a/src/rkvs/mosaic_compositor.cc b/src/rkvs/mosaic_compositor.cc
+--- a/src/rkvs/mosaic_compositor.cc
++++ b/src/rkvs/mosaic_compositor.cc
+@@ -279,10 +279,26 @@
+         const auto& frame = *found->second;
+         const int cell_x = static_cast<int>(index % columns) * cell_width;
+         const int cell_y = static_cast<int>(index / columns) * cell_height;
+-        const float scale = std::min(static_cast<float>(cell_width) / frame.width,
+-                                     static_cast<float>(cell_height) / frame.height);
+-        const int shown_width = std::max(2, static_cast<int>(frame.width * scale) & ~1);
+-        const int shown_height = std::max(2, static_cast<int>(frame.height * scale) & ~1);
++        int crop_left = 0, crop_top = 0;
++        int crop_width = frame.width, crop_height = frame.height;
++        {
++          std::lock_guard<std::mutex> lock(result_mutex);
++          if (roi_mode == "auto" && roi_valid &&
++              monotonic_ns() - roi_last_seen_ns <= roi_lost_ns) {
++            crop_left = std::clamp(static_cast<int>(roi_left) & ~1, 0,
++                                   std::max(0, frame.width - 2));
++            crop_top = std::clamp(static_cast<int>(roi_top) & ~1, 0,
++                                  std::max(0, frame.height - 2));
++            crop_width = std::clamp(static_cast<int>(roi_width) & ~1, 2,
++                                    frame.width - crop_left);
++            crop_height = std::clamp(static_cast<int>(roi_height) & ~1, 2,
++                                     frame.height - crop_top);
++          }
++        }
++        const float scale = std::min(static_cast<float>(cell_width) / crop_width,
++                                     static_cast<float>(cell_height) / crop_height);
++        const int shown_width = std::max(2, static_cast<int>(crop_width * scale) & ~1);
++        const int shown_height = std::max(2, static_cast<int>(crop_height * scale) & ~1);
+         const int left = (cell_x + (cell_width - shown_width) / 2) & ~1;
+         const int top = (cell_y + (cell_height - shown_height) / 2) & ~1;
+         rga_buffer_t source = wrapbuffer_fd(frame.planes[0].dmabuf_fd,
+@@ -290,7 +306,7 @@
+             frame.planes[0].stride ? frame.planes[0].stride : frame.width,
+             frame.height);
+         rga_buffer_t pattern{};
+-        im_rect source_rect{0, 0, frame.width, frame.height};
++        im_rect source_rect{crop_left, crop_top, crop_width, crop_height};
+         im_rect destination_rect{left, top, shown_width, shown_height};
+         im_rect pattern_rect{};
+         if (improcess(source, canvas, pattern, source_rect, destination_rect,
+@@ -300,10 +316,10 @@
+         std::vector<im_rect> rectangles;
+         std::vector<std::pair<im_rect, int>> tracked_rectangles;
+         for (const auto& detection : result->second.detections) {
+-          int box_left = left + static_cast<int>(detection.box.left * scale);
+-          int box_top = top + static_cast<int>(detection.box.top * scale);
+-          int box_right = left + static_cast<int>(detection.box.right * scale);
+-          int box_bottom = top + static_cast<int>(detection.box.bottom * scale);
++          int box_left = left + static_cast<int>((detection.box.left - crop_left) * scale);
++          int box_top = top + static_cast<int>((detection.box.top - crop_top) * scale);
++          int box_right = left + static_cast<int>((detection.box.right - crop_left) * scale);
++          int box_bottom = top + static_cast<int>((detection.box.bottom - crop_top) * scale);
+           box_left = std::clamp(box_left, left, left + shown_width - 2);
+           box_top = std::clamp(box_top, top, top + shown_height - 2);
+           box_right = std::clamp(box_right, box_left + 2, left + shown_width);
+@@ -392,6 +408,11 @@
+   std::map<std::string, SharedFrame> latest;
+   std::mutex result_mutex;
+   std::map<std::string, ResultBatch> results;
++  std::string roi_mode = "full";
++  bool roi_valid = false;
++  float roi_left = 0, roi_top = 0, roi_width = 0, roi_height = 0;
++  uint64_t roi_last_seen_ns = 0;
++  const uint64_t roi_lost_ns = 1500000000ULL;
+   OutputCallback callback;
+   std::atomic<bool> running{false};
+   std::thread thread;
+@@ -415,6 +436,37 @@
+ void RgaMosaicCompositor::update_result(const ResultBatch& result) {
+   std::lock_guard<std::mutex> lock(impl_->result_mutex);
+   impl_->results[result.source_id] = result;
++  if (impl_->roi_mode != "auto" || impl_->source_ids.size() != 1 ||
++      result.source_id != impl_->source_ids.front())
++    return;
++  const Detection* target = nullptr;
++  for (const auto& detection : result.detections)
++    if (detection.class_id == 0 && detection.score >= 0.30f &&
++        (!target || detection.score > target->score))
++      target = &detection;
++  if (!target || result.width <= 0 || result.height <= 0) return;
++  const float aspect = static_cast<float>(impl_->config.width) / impl_->config.height;
++  float height = std::max(720.0f, target->box.height() * 1.8f);
++  float width = height * aspect;
++  if (width < target->box.width() * 1.6f) {
++    width = target->box.width() * 1.6f;
++    height = width / aspect;
++  }
++  if (width > result.width) { width = result.width; height = width / aspect; }
++  if (height > result.height) { height = result.height; width = height * aspect; }
++  const float center_x = (target->box.left + target->box.right) * 0.5f;
++  const float center_y = (target->box.top + target->box.bottom) * 0.5f;
++  const float left = std::clamp(center_x - width * 0.5f, 0.0f,
++                                std::max(0.0f, result.width - width));
++  const float top = std::clamp(center_y - height * 0.5f, 0.0f,
++                               std::max(0.0f, result.height - height));
++  const float alpha = impl_->roi_valid ? 0.25f : 1.0f;
++  impl_->roi_left += alpha * (left - impl_->roi_left);
++  impl_->roi_top += alpha * (top - impl_->roi_top);
++  impl_->roi_width += alpha * (width - impl_->roi_width);
++  impl_->roi_height += alpha * (height - impl_->roi_height);
++  impl_->roi_valid = true;
++  impl_->roi_last_seen_ns = monotonic_ns();
+ }
+ uint64_t RgaMosaicCompositor::frames() const { return impl_->frame_count; }
+ uint64_t RgaMosaicCompositor::dropped() const { return impl_->dropped_count; }
+@@ -423,5 +475,26 @@
+   const uint64_t last = impl_->last_input_ns.load();
+   return !last || monotonic_ns() - last > 250000000ULL;
+ }
++bool RgaMosaicCompositor::set_roi_mode(const std::string& mode) {
++  if (mode != "full" && mode != "auto") return false;
++  std::lock_guard<std::mutex> lock(impl_->result_mutex);
++  impl_->roi_mode = mode;
++  if (mode == "full") impl_->roi_valid = false;
++  return true;
++}
++std::string RgaMosaicCompositor::roi_status_json() const {
++  std::lock_guard<std::mutex> lock(impl_->result_mutex);
++  const bool tracking = impl_->roi_mode == "auto" && impl_->roi_valid &&
++      monotonic_ns() - impl_->roi_last_seen_ns <= impl_->roi_lost_ns;
++  std::ostringstream out;
++  out << "{\"source_id\":\"" << impl_->source_ids.front()
++      << "\",\"mode\":\"" << impl_->roi_mode
++      << "\",\"tracking\":" << (tracking ? "true" : "false")
++      << ",\"rect\":[" << static_cast<int>(impl_->roi_left) << ','
++      << static_cast<int>(impl_->roi_top) << ','
++      << static_cast<int>(impl_->roi_width) << ','
++      << static_cast<int>(impl_->roi_height) << "]}";
++  return out.str();
++}
+ 
+ }  // namespace rkvs
+diff --git a/src/rkvs/main.cc b/src/rkvs/main.cc
+--- a/src/rkvs/main.cc
++++ b/src/rkvs/main.cc
+@@ -212,6 +212,7 @@
+     std::vector<std::pair<rkvs::StreamOutputConfig,
+                           std::unique_ptr<rkvs::MppEncoder>>> encoders;
+     std::vector<std::unique_ptr<rkvs::RgaMosaicCompositor>> focus_compositors;
++    std::map<std::string, rkvs::RgaMosaicCompositor*> focus_index;
+ #endif
+ #ifdef RKVS_HAS_UDP_OUTPUT
+     std::vector<std::unique_ptr<rkvs::UdpMpegTsOutput>> udp_outputs;
+@@ -259,6 +260,9 @@
+           }
+ #ifdef RKVS_HAS_MOSAIC
+           if (compositor) compositor->update_result(batch);
++#ifdef RKVS_HAS_MPP_ENCODER
++          for (auto& focus : focus_compositors) focus->update_result(batch);
++#endif
+ #endif
+           if (batch.timings.capture_to_result_ms <= config.stale_result_ms)
+             results.publish(rkvs::to_json(batch));
+@@ -394,8 +398,11 @@
+         focus.height = output.height;
+         focus.fps = output.fps;
+         focus.sources = {output.source};
+-        focus_compositors.push_back(std::make_unique<rkvs::RgaMosaicCompositor>(
+-            focus, focus.sources, &frame_hub));
++        auto focus_compositor = std::make_unique<rkvs::RgaMosaicCompositor>(
++            focus, focus.sources, &frame_hub);
++        focus_compositor->set_roi_mode("auto");
++        focus_index[output.source] = focus_compositor.get();
++        focus_compositors.push_back(std::move(focus_compositor));
+       }
+     }
+ #endif
+@@ -431,6 +438,16 @@
+         source->second->set_enabled(command == "enable_source");
+         return std::string("{\"ok\":true}");
+       }
++      if (command == "set_roi_mode") {
++        const std::string id = field(request, "source_id");
++        const std::string mode = field(request, "mode");
++        auto focus = focus_index.find(id);
++        if (focus == focus_index.end())
++          return std::string("{\"ok\":false,\"error\":\"unknown ROI source\"}");
++        if (!focus->second->set_roi_mode(mode))
++          return std::string("{\"ok\":false,\"error\":\"ROI mode must be full or auto\"}");
++        return std::string("{\"ok\":true}");
++      }
+       if (command == "reload_soft_config") {
+         auto replacement = rkvs::ConfigLoader::load(config_path);
+         std::lock_guard<std::mutex> lock(config_mutex);
+@@ -505,6 +522,12 @@
+           response << (focus_compositors[index]->idle() ? "true" : "false");
+         }
+         response << ']';
++        response << ",\"roi\":[";
++        for (size_t index = 0; index < focus_compositors.size(); ++index) {
++          if (index) response << ',';
++          response << focus_compositors[index]->roi_status_json();
++        }
++        response << ']';
+         response << ",\"encoders\":[";
+         for (size_t index = 0; index < encoders.size(); ++index) {
+           if (index) response << ',';

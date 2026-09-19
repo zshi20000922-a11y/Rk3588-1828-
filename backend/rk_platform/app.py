@@ -57,6 +57,7 @@ class VisionPipelinePatch(BaseModel):
     tracking_enabled: bool | None = None
     active_detect_fps: int | None = None
     idle_detect_fps: int | None = None
+    roi_modes: dict[str, str] | None = None
 
 
 config = load_config()
