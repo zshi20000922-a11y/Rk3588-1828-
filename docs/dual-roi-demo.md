@@ -19,6 +19,8 @@ GLOBAL_SEARCH -> CROSS_CAMERA_MATCH -> SWITCHING_TO_ROI
 
 Demo 与普通 `rk_vision_service` 互斥：启动 Demo 时先停止普通视觉服务，再启动 `rknn_dual_camera_detector`；退出或启动失败时恢复普通视觉服务。RK1828 推理服务不参与切换。
 
+双摄 ROI 服务脚本只安装在 `/userdata/rknn-dual-detector/`，不得以 `S*` 名称放入 `/etc/init.d/`。该 Demo 只能由 Web 白名单接口按需启动，防止开机阶段抢占摄像头、RGA、MPP 或阻塞用户态启动。
+
 ## 专家演示步骤
 
 1. 使用网线专网访问页面，优先使用 WebRTC；USB 页面只提供 640×360@5 FPS CPU MJPEG 降级预览。

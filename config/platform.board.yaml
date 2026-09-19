@@ -41,7 +41,7 @@ vision_service:
 dual_roi_demo:
   enabled: true
   control_socket: /run/rknn-dual-detector/control.sock
-  detector_service: /etc/init.d/S95rknn-dual-detector
+  detector_service: /userdata/rknn-dual-detector/S95rknn-dual-detector
   vision_service: /etc/init.d/S96rk-vision-service
   start_timeout_seconds: 15
   validation_path: /userdata/rknn-dual-detector/config/homography_validation.json

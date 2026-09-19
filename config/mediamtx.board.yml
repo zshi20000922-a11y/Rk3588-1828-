@@ -26,6 +26,7 @@ paths:
   dual-view:
     source: rtsp://127.0.0.1:8554/mosaic
   demo-global:
-    source: udp+mpegts://127.0.0.1:7000
+    # MediaMTX v1.7 uses udp:// for MPEG-TS-over-UDP sources.
+    source: udp://127.0.0.1:7000
   demo-roi:
-    source: udp+mpegts://127.0.0.1:7001
+    source: udp://127.0.0.1:7001
