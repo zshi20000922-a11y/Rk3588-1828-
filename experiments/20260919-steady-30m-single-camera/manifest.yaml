@@ -1,0 +1,26 @@
+experiment: steady-30m-single-camera
+date: 2026-09-19
+git_commit: 62b464c3de6caac6ef9e5e751e4ae888a3070eae
+board:
+  model: ATK-DLRK3588 Board
+  kernel: 6.1.141
+  os: Buildroot 2024.02
+accelerator: RK1828 over PCIe
+model:
+  id: qwen2.5-omni-3b-rk1828
+  quantization: GRQ W4A16 / KV FP16
+  compiled_kv_context_tokens: 1024
+workload:
+  duration_seconds: 1800
+  request_interval_seconds: 5
+  sessions: 4
+  refresh_turns: 16
+  camera: cam0
+  camera_target_fps: 60
+  yolo_target_fps: 5
+  cam1_enabled: false
+artifacts:
+  raw/requests.jsonl: ca57e5bd57db9974a8e18ab3d052ee2a9934f2953580ed38207cdc0cbc65a144
+  raw/system.csv: 21c1a62266571553a3d8c8bdcb76dd0585eb3cafde3a3755b392d859348703e8
+  raw/vision.jsonl: b8f215a32d6bc6f06dcea8979872d43156c72d74caaf6544d7d8b27416c9fee8
+
