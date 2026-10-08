@@ -1,0 +1,14 @@
+experiment_id: 20261009-dual-hdmi-60fps
+status: inconclusive
+goal: Show two cameras on HDMI at a 60 FPS compositor target with no web video streams or MPP encoder outputs.
+configuration: config.yaml
+camera_sources: [cam0:/dev/video44, cam1:/dev/video62]
+capture_target: 3840x2160@60
+display_target: 1920x1080@60
+verification:
+  observation_seconds: incomplete
+  displayed_fps: not_recorded
+  capture_fps: not_recorded
+  dropped_frames: not_recorded
+  kernel_errors: not_recorded
+note: The board service was started, but the monitoring command was interrupted before collecting results. This profile is not validated for use.

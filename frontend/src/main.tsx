@@ -116,7 +116,7 @@ const API = "/api/v1";
 
 function App() {
   const [token, setToken] = useState(
-    localStorage.getItem("rk-token") || "SET_A_UNIQUE_TOKEN_BEFORE_START",
+    localStorage.getItem("rk-token") || "",
   );
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [current, setCurrent] = useState<string>("");
@@ -465,6 +465,7 @@ function App() {
             value={token}
             onChange={(e) => setToken(e.target.value)}
             type="password"
+            placeholder="请输入本地管理员令牌"
           />
         </div>
       </aside>

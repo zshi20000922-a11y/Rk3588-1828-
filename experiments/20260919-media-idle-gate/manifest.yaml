@@ -1,7 +1,7 @@
 experiment: rk-vision-service-media-idle-gate
 date: 2026-09-19
 platform_base_commit: 10a9e66
-vision_source: /home/user/PycharmProjects/shize/RK3588/rknn-cpp-Multithreading-main
+vision_source: external/rknn-cpp-Multithreading-main
 board_binary_sha256: 155b6cfed55814138938639dbfc27ef7e1d09427f7e18a0ed7a9763d902d081f
 board_binary: /userdata/rk-vision-service/bin/rk_vision_service
 rollback_binary: /userdata/rk-vision-service/bin/rk_vision_service.pre-idle-gate-20260919
@@ -11,4 +11,3 @@ conditions:
   cam1_enabled: false
   mosaic_target_fps: 25
   focus_target_fps: 60
-

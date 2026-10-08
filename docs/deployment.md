@@ -11,13 +11,13 @@ python3 -m venv .venv
   fastapi 'uvicorn[standard]' websockets python-multipart pydantic PyYAML Pillow
 ```
 
-在 PC 执行 `scripts/build.sh` 和 `scripts/deploy-board.sh`。修改 `config/platform.board.yaml` 的令牌后运行 `board-start.sh`。
+在 PC 克隆本仓库后执行 `scripts/build.sh` 和 `scripts/deploy-board.sh`。部署前复制/编辑 `config/platform.board.yaml`，将 `server.admin_token` 替换为唯一随机令牌，并核对板端模型、相机和运行时路径；不要把真实令牌提交到 Git。随后再运行 `board-start.sh`。
 
 板端 `/etc/init.d/S97rk-edge-ai` 会从 `config/platform.board.yaml` 的 `inference` 段读取 `max_sessions`、`max_context_tokens` 和 `max_new_tokens`，并分别传给 C++ 守护进程。修改这些值后必须重启 `S97rk-edge-ai`；上下文增大会增加 RK1828 KV Cache 内存，部署前应按 1024、2048、4096、8192 逐档做稳定性与内存实验。
 
 `compiled_kv_context_tokens` 表示当前RKNN模型转换时实际包含的Attention KV buffer lens，是生产安全上限。服务取 `min(max_context_tokens, compiled_kv_context_tokens)`；不得仅因长单轮Prefill成功就提高该值，必须以RKNN3启动日志出现精确KV组且多会话LRU测试通过为准。
 
-板端真实 RKNN3 后端验收完成前保持 `inference.backend: mock`。完成后将其切换为 `rknn3`，并先启动 `/run/rk-edge-ai/inference.sock` 对应的 Daemon。
+PC 开发配置默认使用 `inference.backend: mock`。板端真实 RKNN3 后端依赖独立 SDK 和模型文件；部署时按设备条件将其切换为 `rknn3`，并先启动 `/run/rk-edge-ai/inference.sock` 对应的 Daemon。
 
 建议最后增加 Buildroot init 脚本，让 Daemon 先于 Web 服务启动；Nginx 只代理 `/api` 和静态目录，不直接开放 Unix Socket。
 
