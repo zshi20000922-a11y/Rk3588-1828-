@@ -1,5 +1,0 @@
--rw-rw-rw- 1 root root 44239312 Sep 18 13:53 /userdata/rk-edge-ai/data/kv/kv4096-1.kv
--rw-rw-rw- 1 root root        4 Sep 18 13:53 /userdata/rk-edge-ai/data/kv/kv4096-1.meta
--rw-rw-rw- 1 root root        0 Sep 18 13:53 /userdata/rk-edge-ai/data/kv/kv4096-2.kv
--rw-rw-rw- 1 root root        4 Sep 18 13:53 /userdata/rk-edge-ai/data/kv/kv4096-2.meta
--rw-rw-rw- 1 root root        3 Sep 18 13:53 /userdata/rk-edge-ai/data/kv/kv4096-explicit.meta

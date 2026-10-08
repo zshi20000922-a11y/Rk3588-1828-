@@ -35,10 +35,10 @@ Demo 与普通 `rk_vision_service` 互斥：启动 Demo 时先停止普通视觉
 
 旧单应矩阵仅适用于 2026-08-24 的固定机位。正式演示前应让单人依次站在 Camera 0 的中心、四角和四边，保存 Camera 0 中心、Camera 1 预测中心及实际中心。P95 映射误差必须不超过 160 px；超限时禁止硬件 ROI，并重新拟合单应矩阵。
 
-将九点数据填写到实验目录的 `homography-nine-point-template.csv` 后执行：
+将九点数据保存在部署设备的配置目录中，例如 `/userdata/rknn-dual-detector/config/homography-nine-point.csv`，然后执行：
 
 ```bash
-python3 scripts/validate-homography.py homography-nine-point-template.csv \
+python3 scripts/validate-homography.py /userdata/rknn-dual-detector/config/homography-nine-point.csv \
   --calibration /userdata/rknn-dual-detector/config/stereo_calibration.yaml \
   --output /userdata/rknn-dual-detector/config/homography_validation.json
 ```
@@ -50,4 +50,4 @@ python3 scripts/validate-homography.py homography-nine-point-template.csv \
 - Demo 启动失败：控制器会停止双摄检测进程并恢复 `rk_vision_service`。
 - Camera 1 模式切换失败：检测进程会回滚到 3840×2160 全画幅。
 - 页面没有视频但状态正常：优先检查 MediaMTX 的 `demo-global` 和 `demo-roi`；不要并行启动额外 MPP MJPEG 解码器。
-- 出现 `rga timeout`、`map dma buffer error` 或 `rkvdec reset`：立即退出 Demo，保存 pstore/dmesg，不继续压力测试。
+- 出现 `rga timeout`、`map dma buffer error` 或 `rkvdec reset`：立即退出 Demo，保存 pstore/dmesg，并按故障恢复流程检查设备。

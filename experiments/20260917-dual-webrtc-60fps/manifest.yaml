@@ -1,9 +1,0 @@
-date: 2026-09-17
-git_base: 5b74e4d
-board: RK3588
-cameras: [CSI3_IMX415_video44, CSI1_IMX415_video62]
-input: {width: 3840, height: 2160, fps: 60, pixel_format: NV12}
-output: {width: 1280, height: 720, fps: 60, codec: H264, bitrate: 8000000}
-transport: WebRTC
-gateway: MediaMTX_v1.7.0
-detection_fps_per_camera: 5

@@ -2,7 +2,7 @@
 
 面向边缘设备多模态推理、双摄视觉和可复现实验的工程项目。RK3588 负责 Web/API、摄像头与视觉任务；通过 PCIe 连接的 RK1828 运行 Qwen2.5-Omni-3B RKNN3 推理。
 
-> 项目仍在迭代。PC 开发配置默认使用 mock 推理后端；性能数据只适用于对应实验记录中的硬件、模型和配置。双摄高帧率配置仍有驱动稳定性限制，详见 [实验记录](experiments/) 和 [故障排查](docs/troubleshooting.md)。
+> 项目仍在迭代。PC 开发配置默认使用 mock 推理后端；双摄高帧率配置需要按实际传感器、驱动和媒体链路核验，详见[故障排查](docs/troubleshooting.md)。
 
 ## 功能
 
@@ -12,7 +12,24 @@
 - 摄像头选择、帧分析、检测/追踪控制和共享预览网关。
 - RK3588 侧 V4L2、RKISP、RGA、MPP、RTSP/WebRTC 视觉链路及 YOLO 接口。
 - 双摄全局搜索到硬件 ROI 的控制原型，启动前有设备绑定和标定误差检查。
-- 可复现实验记录，包含配置、原始数据、统计指标和结论。
+
+## 页面截图
+
+以下截图展示控制台的文字对话、多模态图片输入、设备资源与会话上下文界面。设备状态和摄像头在线情况会随现场连接与服务状态变化。
+
+![RK3588 实机文字输入与推理结果](docs/screenshots/console-live.png)
+
+![RK3588 实机图片输入与多模态推理结果](docs/screenshots/inference-image-live.png)
+
+![图片输入与模型回答细节](docs/screenshots/inference-image-detail-live.png)
+
+![RK3588 CPU、内存、NPU 温度与双摄 ROI 状态](docs/screenshots/device-monitor-live.png)
+
+摄像头与 ROI 控制面板布局示例；视频在线状态取决于现场设备和媒体服务。
+
+![摄像头选择和 ROI 控制面板](docs/screenshots/camera-live.png)
+
+![多会话上下文、KV 状态和模型配置面板](docs/screenshots/context-model-live.png)
 
 ## 架构与职责
 
@@ -65,7 +82,7 @@ cmake -S native -B build-native \
   -DMODEL_ZOO=/path/to/rknn3-model-zoo
 ```
 
-部署前请复制板端配置模板，设置唯一管理令牌、模型路径和媒体设备路径，并按实验记录验收目标摄像头链路。双摄 ROI Demo 与视觉服务默认不应以未经验证的高帧率配置开机自启。
+部署前请复制板端配置模板，设置唯一管理令牌、模型路径和媒体设备路径，并按[双摄视觉链路文档](docs/dual-camera.md)核对目标摄像头。双摄 ROI Demo 与视觉服务默认不应以未经验证的高帧率配置开机自启。
 
 ## 文档索引
 
@@ -74,10 +91,7 @@ cmake -S native -B build-native \
 - [双摄视觉链路](docs/dual-camera.md)
 - [双摄硬件 ROI Demo](docs/dual-roi-demo.md)
 - [故障排查](docs/troubleshooting.md)
-- [论文实验设计](docs/thesis-experiments.md)
-- [简历素材和已验证指标](docs/resume-points.md)
 - [更新记录](CHANGELOG.md)
-- [实验目录](experiments/)
 
 ## 数据与安全
 
